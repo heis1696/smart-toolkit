@@ -246,7 +246,7 @@
 .stk-section-header.collapsed .stk-arrow{transform:rotate(-90deg)}
 .stk-arrow.collapsed{transform:rotate(-90deg)}
 .stk-section-body{padding:8px 12px;display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--SmartThemeBorderColor)}
-.stk-section-body.hidden{display:none}
+.stk-section-body.stk-hidden{display:none}
 .stk-row{display:flex;align-items:center;gap:8px}
 .stk-row label{font-size:12px;flex:1;display:flex;flex-direction:column;gap:2px}
 .stk-row label>span{font-size:11px;opacity:.7}
@@ -263,7 +263,7 @@
 .stk-sub-header{padding:6px 10px;cursor:pointer;font-size:12px;font-weight:500;display:flex;align-items:center;gap:6px}
 .stk-sub-header:hover{background:var(--black30a)}
 .stk-sub-body{padding:6px 10px;display:flex;flex-direction:column;gap:5px;border-top:1px solid var(--SmartThemeBorderColor)}
-.stk-sub-body.hidden{display:none}
+.stk-sub-body.stk-hidden{display:none}
 #stk-top-btn{cursor:pointer;opacity:.7;transition:opacity .2s;display:flex;align-items:center;justify-content:center;height:var(--topBarBlockSize);width:var(--topBarBlockSize);font-size:var(--topbarIconSize)}
 #stk-top-btn:hover{opacity:1}
 #stk-plot-options{position:fixed;bottom:80px;right:20px;width:340px;background:var(--SmartThemeBlurTintColor,#1a1a2e);border:1px solid var(--SmartThemeBorderColor);border-radius:12px;z-index:31001;box-shadow:0 8px 32px rgba(0,0,0,.4);overflow:hidden}
@@ -326,7 +326,7 @@
                     <span>${m.name} \u8BBE\u7F6E</span>
                     <span class="stk-arrow fa-solid fa-chevron-down"></span>
                 </div>
-                <div class="stk-section-body hidden">
+                <div class="stk-section-body stk-hidden">
                     ${m.renderUI(ms)}
                 </div>
             </div>`;
@@ -345,14 +345,14 @@
                         <span>\u{1F50C} \u5171\u4EAB API \u914D\u7F6E</span>
                         <span class="stk-arrow fa-solid fa-chevron-down"></span>
                     </div>
-                    <div class="stk-section-body hidden">
+                    <div class="stk-section-body stk-hidden">
                         <!-- \u6A21\u5757\u542F\u7528/\u66F4\u65B0\u65B9\u5F0F -->
                         <div class="stk-sub-section">
                             <div class="stk-sub-header">
                                 <span class="stk-arrow fa-solid fa-chevron-down collapsed" style="font-size:10px"></span>
                                 \u{1F4CB} \u6A21\u5757\u7BA1\u7406
                             </div>
-                            <div class="stk-sub-body hidden">
+                            <div class="stk-sub-body stk-hidden">
                                 ${moduleOverviewHtml}
                             </div>
                         </div>
@@ -362,7 +362,7 @@
                                 <span class="stk-arrow fa-solid fa-chevron-down collapsed" style="font-size:10px"></span>
                                 \u{1F517} API \u8FDE\u63A5
                             </div>
-                            <div class="stk-sub-body hidden">
+                            <div class="stk-sub-body stk-hidden">
                                 <div class="stk-toggle">
                                     <input type="checkbox" id="stk_use_preset" ${sh.use_preset ? "checked" : ""} />
                                     <span>\u4F7F\u7528\u5F53\u524D\u9884\u8BBE</span>
@@ -391,7 +391,7 @@
                         <span>\u{1F4DD} \u6A21\u677F\u63D0\u793A\u8BCD\uFF08\u4E16\u754C\u4E66\uFF09</span>
                         <span class="stk-arrow fa-solid fa-chevron-down"></span>
                     </div>
-                    <div class="stk-section-body hidden" id="stk_prompts_body">
+                    <div class="stk-section-body stk-hidden" id="stk_prompts_body">
                         <div style="font-size:11px;opacity:.6;margin-bottom:4px;">\u63D0\u793A\u8BCD\u5B58\u50A8\u5728\u4E16\u754C\u4E66\u300C${Core.WORLD_BOOK}\u300D\u4E2D\uFF0C\u4FEE\u6539\u540E\u81EA\u52A8\u540C\u6B65\u3002</div>
                         ${modules2.map((m) => {
         if (!m.templatePrompts) return "";
@@ -401,7 +401,7 @@
                                         <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
                                         ${m.name} - ${key}
                                     </div>
-                                    <div class="stk-sub-body hidden">
+                                    <div class="stk-sub-body stk-hidden">
                                         <textarea id="stk_prompt_${key}" class="text_pole" rows="8" style="font-family:monospace;font-size:11px;white-space:pre;resize:vertical">${_.escape(def)}</textarea>
                                         <div class="stk-btn stk_prompt_save" data-key="${key}" style="align-self:flex-end">\u{1F4BE} \u4FDD\u5B58\u5230\u4E16\u754C\u4E66</div>
                                     </div>
@@ -422,11 +422,11 @@
       topBtn.on("click", togglePanel);
       $("#stk-panel-close, #stk-overlay").on("click", togglePanel);
       $(document).on("click", ".stk-section-header", function() {
-        $(this).toggleClass("collapsed").next(".stk-section-body").toggleClass("hidden");
+        $(this).toggleClass("collapsed").next(".stk-section-body").toggleClass("stk-hidden");
       });
       $(document).on("click", ".stk-sub-header", function() {
         $(this).find(".stk-arrow").toggleClass("collapsed");
-        $(this).next(".stk-sub-body").toggleClass("hidden");
+        $(this).next(".stk-sub-body").toggleClass("stk-hidden");
       });
       const save = () => Core.saveSettings();
       $("#stk_use_preset").on("change", function() {

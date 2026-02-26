@@ -27,7 +27,7 @@ const CSS = `
 .stk-section-header.collapsed .stk-arrow{transform:rotate(-90deg)}
 .stk-arrow.collapsed{transform:rotate(-90deg)}
 .stk-section-body{padding:8px 12px;display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--SmartThemeBorderColor)}
-.stk-section-body.hidden{display:none}
+.stk-section-body.stk-hidden{display:none}
 .stk-row{display:flex;align-items:center;gap:8px}
 .stk-row label{font-size:12px;flex:1;display:flex;flex-direction:column;gap:2px}
 .stk-row label>span{font-size:11px;opacity:.7}
@@ -44,7 +44,7 @@ const CSS = `
 .stk-sub-header{padding:6px 10px;cursor:pointer;font-size:12px;font-weight:500;display:flex;align-items:center;gap:6px}
 .stk-sub-header:hover{background:var(--black30a)}
 .stk-sub-body{padding:6px 10px;display:flex;flex-direction:column;gap:5px;border-top:1px solid var(--SmartThemeBorderColor)}
-.stk-sub-body.hidden{display:none}
+.stk-sub-body.stk-hidden{display:none}
 #stk-top-btn{cursor:pointer;opacity:.7;transition:opacity .2s;display:flex;align-items:center;justify-content:center;height:var(--topBarBlockSize);width:var(--topBarBlockSize);font-size:var(--topbarIconSize)}
 #stk-top-btn:hover{opacity:1}
 #stk-plot-options{position:fixed;bottom:80px;right:20px;width:340px;background:var(--SmartThemeBlurTintColor,#1a1a2e);border:1px solid var(--SmartThemeBorderColor);border-radius:12px;z-index:31001;box-shadow:0 8px 32px rgba(0,0,0,.4);overflow:hidden}
@@ -113,7 +113,7 @@ export const UI = {
                     <span>${m.name} 设置</span>
                     <span class="stk-arrow fa-solid fa-chevron-down"></span>
                 </div>
-                <div class="stk-section-body hidden">
+                <div class="stk-section-body stk-hidden">
                     ${m.renderUI(ms)}
                 </div>
             </div>`;
@@ -134,14 +134,14 @@ export const UI = {
                         <span>🔌 共享 API 配置</span>
                         <span class="stk-arrow fa-solid fa-chevron-down"></span>
                     </div>
-                    <div class="stk-section-body hidden">
+                    <div class="stk-section-body stk-hidden">
                         <!-- 模块启用/更新方式 -->
                         <div class="stk-sub-section">
                             <div class="stk-sub-header">
                                 <span class="stk-arrow fa-solid fa-chevron-down collapsed" style="font-size:10px"></span>
                                 📋 模块管理
                             </div>
-                            <div class="stk-sub-body hidden">
+                            <div class="stk-sub-body stk-hidden">
                                 ${moduleOverviewHtml}
                             </div>
                         </div>
@@ -151,7 +151,7 @@ export const UI = {
                                 <span class="stk-arrow fa-solid fa-chevron-down collapsed" style="font-size:10px"></span>
                                 🔗 API 连接
                             </div>
-                            <div class="stk-sub-body hidden">
+                            <div class="stk-sub-body stk-hidden">
                                 <div class="stk-toggle">
                                     <input type="checkbox" id="stk_use_preset" ${sh.use_preset ? 'checked' : ''} />
                                     <span>使用当前预设</span>
@@ -180,7 +180,7 @@ export const UI = {
                         <span>📝 模板提示词（世界书）</span>
                         <span class="stk-arrow fa-solid fa-chevron-down"></span>
                     </div>
-                    <div class="stk-section-body hidden" id="stk_prompts_body">
+                    <div class="stk-section-body stk-hidden" id="stk_prompts_body">
                         <div style="font-size:11px;opacity:.6;margin-bottom:4px;">提示词存储在世界书「${Core.WORLD_BOOK}」中，修改后自动同步。</div>
                         ${modules.map(m => {
                             if (!m.templatePrompts) return '';
@@ -190,7 +190,7 @@ export const UI = {
                                         <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
                                         ${m.name} - ${key}
                                     </div>
-                                    <div class="stk-sub-body hidden">
+                                    <div class="stk-sub-body stk-hidden">
                                         <textarea id="stk_prompt_${key}" class="text_pole" rows="8" style="font-family:monospace;font-size:11px;white-space:pre;resize:vertical">${_.escape(def)}</textarea>
                                         <div class="stk-btn stk_prompt_save" data-key="${key}" style="align-self:flex-end">💾 保存到世界书</div>
                                     </div>
@@ -214,11 +214,11 @@ export const UI = {
 
         // 折叠/展开
         $(document).on('click', '.stk-section-header', function () {
-            $(this).toggleClass('collapsed').next('.stk-section-body').toggleClass('hidden');
+            $(this).toggleClass('collapsed').next('.stk-section-body').toggleClass('stk-hidden');
         });
         $(document).on('click', '.stk-sub-header', function () {
             $(this).find('.stk-arrow').toggleClass('collapsed');
-            $(this).next('.stk-sub-body').toggleClass('hidden');
+            $(this).next('.stk-sub-body').toggleClass('stk-hidden');
         });
 
         // 共享API事件
