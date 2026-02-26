@@ -244,6 +244,7 @@
 .stk-section-header:hover{background:rgba(255,255,255,.06)}
 .stk-section-header .stk-arrow{transition:transform .2s;font-size:11px}
 .stk-section-header.collapsed .stk-arrow{transform:rotate(-90deg)}
+.stk-arrow.collapsed{transform:rotate(-90deg)}
 .stk-section-body{padding:8px 12px;display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--SmartThemeBorderColor)}
 .stk-section-body.hidden{display:none}
 .stk-row{display:flex;align-items:center;gap:8px}
@@ -263,7 +264,7 @@
 .stk-sub-header:hover{background:rgba(255,255,255,.05)}
 .stk-sub-body{padding:6px 10px;display:flex;flex-direction:column;gap:5px;border-top:1px solid rgba(255,255,255,.05)}
 .stk-sub-body.hidden{display:none}
-#stk-top-btn{cursor:pointer;font-size:18px;padding:2px 4px;opacity:.8;transition:opacity .2s}
+#stk-top-btn{cursor:pointer;opacity:.7;transition:opacity .2s}
 #stk-top-btn:hover{opacity:1}
 #stk-plot-options{position:fixed;bottom:80px;right:20px;width:340px;background:var(--SmartThemeBlurTintColor,#1a1a2e);border:1px solid var(--SmartThemeBorderColor);border-radius:12px;z-index:31001;box-shadow:0 8px 32px rgba(0,0,0,.4);overflow:hidden}
 .stk-po-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;font-weight:600;font-size:13px;border-bottom:1px solid var(--SmartThemeBorderColor);background:rgba(255,255,255,.03);cursor:move;user-select:none}
@@ -294,7 +295,7 @@
       const sh = s._shared;
       $("head").append(CSS);
       const topBtn = $('<div id="stk-top-btn" class="fa-solid fa-toolbox interactable" title="Smart Toolkit" tabindex="0"></div>');
-      $("#top-settings-holder").prepend(topBtn);
+      $("#top-settings-holder").append(topBtn);
       let moduleOverviewHtml = "";
       for (const m of modules2) {
         const ms = Core.getModuleSettings(m.id, m.defaultSettings);
@@ -316,11 +317,11 @@
         const ms = Core.getModuleSettings(m.id, m.defaultSettings);
         modulePanelsHtml += `
             <div class="stk-section" id="stk_module_${m.id}">
-                <div class="stk-section-header">
+                <div class="stk-section-header collapsed">
                     <span>${m.name} \u8BBE\u7F6E</span>
                     <span class="stk-arrow fa-solid fa-chevron-down"></span>
                 </div>
-                <div class="stk-section-body">
+                <div class="stk-section-body hidden">
                     ${m.renderUI(ms)}
                 </div>
             </div>`;
@@ -335,28 +336,28 @@
             <div id="stk-panel-body">
                 <!-- \u5171\u4EABAPI\u914D\u7F6E + \u6A21\u5757\u603B\u89C8 -->
                 <div class="stk-section">
-                    <div class="stk-section-header">
+                    <div class="stk-section-header collapsed">
                         <span>\u{1F50C} \u5171\u4EAB API \u914D\u7F6E</span>
                         <span class="stk-arrow fa-solid fa-chevron-down"></span>
                     </div>
-                    <div class="stk-section-body">
+                    <div class="stk-section-body hidden">
                         <!-- \u6A21\u5757\u542F\u7528/\u66F4\u65B0\u65B9\u5F0F -->
                         <div class="stk-sub-section">
                             <div class="stk-sub-header">
-                                <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
+                                <span class="stk-arrow fa-solid fa-chevron-down collapsed" style="font-size:10px"></span>
                                 \u{1F4CB} \u6A21\u5757\u7BA1\u7406
                             </div>
-                            <div class="stk-sub-body">
+                            <div class="stk-sub-body hidden">
                                 ${moduleOverviewHtml}
                             </div>
                         </div>
                         <!-- API\u8BBE\u7F6E -->
                         <div class="stk-sub-section">
                             <div class="stk-sub-header">
-                                <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
+                                <span class="stk-arrow fa-solid fa-chevron-down collapsed" style="font-size:10px"></span>
                                 \u{1F517} API \u8FDE\u63A5
                             </div>
-                            <div class="stk-sub-body">
+                            <div class="stk-sub-body hidden">
                                 <div class="stk-toggle">
                                     <input type="checkbox" id="stk_use_preset" ${sh.use_preset ? "checked" : ""} />
                                     <span>\u4F7F\u7528\u5F53\u524D\u9884\u8BBE</span>
