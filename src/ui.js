@@ -13,16 +13,16 @@ const SHARED_DEFAULTS = {
 
 const CSS = `
 <style>
-#stk-panel{position:fixed;top:0;right:-420px;width:400px;height:100vh;background:var(--SmartThemeBlurTintColor,#1a1a2e);border-left:1px solid var(--SmartThemeBorderColor);z-index:31000;transition:right .3s ease;display:flex;flex-direction:column;overflow:hidden;box-shadow:-4px 0 20px rgba(0,0,0,.3)}
+#stk-panel{position:fixed;top:0;right:-420px;width:400px;height:100vh;background:var(--SmartThemeBlurTintColor);border-left:1px solid var(--SmartThemeBorderColor);z-index:31000;transition:right .3s ease;display:flex;flex-direction:column;overflow:hidden;box-shadow:-2px 0 8px rgba(0,0,0,.1)}
 #stk-panel.open{right:0}
-#stk-panel-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--SmartThemeBorderColor);background:rgba(0,0,0,.15);flex-shrink:0}
-#stk-panel-header h3{margin:0;font-size:14px;display:flex;align-items:center;gap:6px}
+#stk-panel-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--SmartThemeBorderColor);flex-shrink:0}
+#stk-panel-header h3{margin:0;font-size:var(--mainFontSize);display:flex;align-items:center;gap:6px;color:var(--SmartThemeBodyColor)}
 #stk-panel-body{flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:10px}
 #stk-overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,.3);z-index:30999;display:none}
 #stk-overlay.open{display:block}
 .stk-section{border:1px solid var(--SmartThemeBorderColor);border-radius:8px;overflow:hidden}
-.stk-section-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;background:rgba(255,255,255,.03);user-select:none;font-weight:600;font-size:13px}
-.stk-section-header:hover{background:rgba(255,255,255,.06)}
+.stk-section-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;user-select:none;font-weight:600;font-size:13px;color:var(--SmartThemeBodyColor)}
+.stk-section-header:hover{background:var(--black30a)}
 .stk-section-header .stk-arrow{transition:transform .2s;font-size:11px}
 .stk-section-header.collapsed .stk-arrow{transform:rotate(-90deg)}
 .stk-arrow.collapsed{transform:rotate(-90deg)}
@@ -38,21 +38,21 @@ const CSS = `
 .stk-toggle input[type=checkbox]{margin:0}
 .stk-module-header{display:flex;align-items:center;gap:8px;flex:1}
 .stk-module-controls{display:flex;align-items:center;gap:10px;font-size:12px}
-.stk-btn{padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;text-align:center;border:1px solid var(--SmartThemeBorderColor);background:rgba(255,255,255,.05)}
-.stk-btn:hover{background:rgba(255,255,255,.12)}
+.stk-btn{padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;text-align:center;border:1px solid var(--SmartThemeBorderColor);background:var(--SmartThemeBlurTintColor)}
+.stk-btn:hover{background:var(--black30a)}
 .stk-sub-section{border:1px dashed var(--SmartThemeBorderColor);border-radius:6px;overflow:hidden;margin-top:2px}
-.stk-sub-header{padding:6px 10px;cursor:pointer;font-size:12px;font-weight:500;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.02)}
-.stk-sub-header:hover{background:rgba(255,255,255,.05)}
-.stk-sub-body{padding:6px 10px;display:flex;flex-direction:column;gap:5px;border-top:1px solid rgba(255,255,255,.05)}
+.stk-sub-header{padding:6px 10px;cursor:pointer;font-size:12px;font-weight:500;display:flex;align-items:center;gap:6px}
+.stk-sub-header:hover{background:var(--black30a)}
+.stk-sub-body{padding:6px 10px;display:flex;flex-direction:column;gap:5px;border-top:1px solid var(--SmartThemeBorderColor)}
 .stk-sub-body.hidden{display:none}
-#stk-top-btn{cursor:pointer;opacity:.7;transition:opacity .2s}
+#stk-top-btn{cursor:pointer;opacity:.7;transition:opacity .2s;display:flex;align-items:center;justify-content:center;height:var(--topBarBlockSize);width:var(--topBarBlockSize);font-size:var(--topbarIconSize)}
 #stk-top-btn:hover{opacity:1}
 #stk-plot-options{position:fixed;bottom:80px;right:20px;width:340px;background:var(--SmartThemeBlurTintColor,#1a1a2e);border:1px solid var(--SmartThemeBorderColor);border-radius:12px;z-index:31001;box-shadow:0 8px 32px rgba(0,0,0,.4);overflow:hidden}
-.stk-po-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;font-weight:600;font-size:13px;border-bottom:1px solid var(--SmartThemeBorderColor);background:rgba(255,255,255,.03);cursor:move;user-select:none}
+.stk-po-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;font-weight:600;font-size:13px;border-bottom:1px solid var(--SmartThemeBorderColor);cursor:move;user-select:none}
 #stk-po-close{cursor:pointer;padding:4px;opacity:.7}
 #stk-po-close:hover{opacity:1}
-.stk-po-item{padding:10px 14px;cursor:pointer;font-size:12px;border-bottom:1px solid rgba(255,255,255,.05);transition:background .15s}
-.stk-po-item:hover{background:rgba(255,255,255,.08)}
+.stk-po-item{padding:10px 14px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--SmartThemeBorderColor);transition:background .15s}
+.stk-po-item:hover{background:var(--black30a)}
 .stk-po-item:last-child{border-bottom:none}
 </style>`;
 
@@ -78,7 +78,12 @@ export const UI = {
 
         // 顶栏按钮
         const topBtn = $('<div id="stk-top-btn" class="fa-solid fa-toolbox interactable" title="Smart Toolkit" tabindex="0"></div>');
-        $('#top-settings-holder').append(topBtn);
+        const $holder = $('#top-settings-holder');
+        if ($holder.children().length > 1) {
+            $holder.children().eq(-2).after(topBtn);
+        } else {
+            $holder.append(topBtn);
+        }
 
         // 模块总览（启用/更新方式）
         let moduleOverviewHtml = '';
