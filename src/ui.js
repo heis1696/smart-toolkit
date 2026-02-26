@@ -25,6 +25,7 @@ const CSS = `
 .stk-section-header:hover{background:rgba(255,255,255,.06)}
 .stk-section-header .stk-arrow{transition:transform .2s;font-size:11px}
 .stk-section-header.collapsed .stk-arrow{transform:rotate(-90deg)}
+.stk-arrow.collapsed{transform:rotate(-90deg)}
 .stk-section-body{padding:8px 12px;display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--SmartThemeBorderColor)}
 .stk-section-body.hidden{display:none}
 .stk-row{display:flex;align-items:center;gap:8px}
@@ -44,7 +45,7 @@ const CSS = `
 .stk-sub-header:hover{background:rgba(255,255,255,.05)}
 .stk-sub-body{padding:6px 10px;display:flex;flex-direction:column;gap:5px;border-top:1px solid rgba(255,255,255,.05)}
 .stk-sub-body.hidden{display:none}
-#stk-top-btn{cursor:pointer;font-size:18px;padding:2px 4px;opacity:.8;transition:opacity .2s}
+#stk-top-btn{cursor:pointer;opacity:.7;transition:opacity .2s}
 #stk-top-btn:hover{opacity:1}
 #stk-plot-options{position:fixed;bottom:80px;right:20px;width:340px;background:var(--SmartThemeBlurTintColor,#1a1a2e);border:1px solid var(--SmartThemeBorderColor);border-radius:12px;z-index:31001;box-shadow:0 8px 32px rgba(0,0,0,.4);overflow:hidden}
 .stk-po-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;font-weight:600;font-size:13px;border-bottom:1px solid var(--SmartThemeBorderColor);background:rgba(255,255,255,.03);cursor:move;user-select:none}
@@ -77,7 +78,7 @@ export const UI = {
 
         // 顶栏按钮
         const topBtn = $('<div id="stk-top-btn" class="fa-solid fa-toolbox interactable" title="Smart Toolkit" tabindex="0"></div>');
-        $('#top-settings-holder').prepend(topBtn);
+        $('#top-settings-holder').append(topBtn);
 
         // 模块总览（启用/更新方式）
         let moduleOverviewHtml = '';
@@ -103,11 +104,11 @@ export const UI = {
             const ms = Core.getModuleSettings(m.id, m.defaultSettings);
             modulePanelsHtml += `
             <div class="stk-section" id="stk_module_${m.id}">
-                <div class="stk-section-header">
+                <div class="stk-section-header collapsed">
                     <span>${m.name} 设置</span>
                     <span class="stk-arrow fa-solid fa-chevron-down"></span>
                 </div>
-                <div class="stk-section-body">
+                <div class="stk-section-body hidden">
                     ${m.renderUI(ms)}
                 </div>
             </div>`;
@@ -124,28 +125,28 @@ export const UI = {
             <div id="stk-panel-body">
                 <!-- 共享API配置 + 模块总览 -->
                 <div class="stk-section">
-                    <div class="stk-section-header">
+                    <div class="stk-section-header collapsed">
                         <span>🔌 共享 API 配置</span>
                         <span class="stk-arrow fa-solid fa-chevron-down"></span>
                     </div>
-                    <div class="stk-section-body">
+                    <div class="stk-section-body hidden">
                         <!-- 模块启用/更新方式 -->
                         <div class="stk-sub-section">
                             <div class="stk-sub-header">
-                                <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
+                                <span class="stk-arrow fa-solid fa-chevron-down collapsed" style="font-size:10px"></span>
                                 📋 模块管理
                             </div>
-                            <div class="stk-sub-body">
+                            <div class="stk-sub-body hidden">
                                 ${moduleOverviewHtml}
                             </div>
                         </div>
                         <!-- API设置 -->
                         <div class="stk-sub-section">
                             <div class="stk-sub-header">
-                                <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
+                                <span class="stk-arrow fa-solid fa-chevron-down collapsed" style="font-size:10px"></span>
                                 🔗 API 连接
                             </div>
-                            <div class="stk-sub-body">
+                            <div class="stk-sub-body hidden">
                                 <div class="stk-toggle">
                                     <input type="checkbox" id="stk_use_preset" ${sh.use_preset ? 'checked' : ''} />
                                     <span>使用当前预设</span>
