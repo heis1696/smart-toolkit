@@ -6,7 +6,7 @@ const STATUS_REGEX = /<StatusBlock>([\s\S]*?)<\/StatusBlock>/i;
 const STATUS_FULL_REGEX = /<StatusBlock>[\s\S]*?<\/StatusBlock>/i;
 const PLACEHOLDER = '<StatusBarPlaceholder/>';
 
-const SYSTEM_PROMPT = `你是状态栏生成器。根据正文和上轮状态输出更新后的状态栏。
+const DEFAULT_SYSTEM_PROMPT = `你是状态栏生成器。根据正文和上轮状态输出更新后的状态栏。
 规则：每字段独立完整填写，禁止使用"同上""无变化"等省略。只输出 <StatusBlock>...</StatusBlock>，不输出其他内容。
 
 输出格式：
@@ -105,6 +105,11 @@ export const StatusBarModule = {
         notification: true,
     },
 
+    // 模板提示词（会同步到世界书）
+    templatePrompts: {
+        statusbar_system_prompt: DEFAULT_SYSTEM_PROMPT,
+    },
+
     init() {},
 
     async onMessage(messageId) {
@@ -141,6 +146,11 @@ export const StatusBarModule = {
         return true;
     },
 
+    async _getSystemPrompt() {
+        const wb = await Core.getWorldBookEntry('statusbar_system_prompt');
+        return wb || DEFAULT_SYSTEM_PROMPT;
+    },
+
     async _runExtra(msgId, settings) {
         const msg = Core.getChat()[msgId];
         if (!msg) return;
@@ -159,9 +169,10 @@ export const StatusBarModule = {
             + '\n\n<CurrentContent>\n' + content + '\n</CurrentContent>'
             + '\n\n请生成更新后的状态栏。';
 
+        const systemPrompt = await this._getSystemPrompt();
         const api = UI.getSharedAPI();
         const result = await Core.requestExtraModel({
-            systemPrompt: SYSTEM_PROMPT,
+            systemPrompt,
             userMessage,
             api,
             validate: parseBlock,
@@ -189,34 +200,54 @@ export const StatusBarModule = {
 
     renderUI(s) {
         return `
-            <label class="checkbox_label"><input type="checkbox" id="sb_enabled" ${s.enabled ? 'checked' : ''} /><span>启用</span></label>
-            <label>更新方式<select id="sb_mode" class="text_pole">
-                <option value="inline"${s.update_mode === 'inline' ? ' selected' : ''}>随 AI 输出</option>
-                <option value="extra_model"${s.update_mode === 'extra_model' ? ' selected' : ''}>额外模型解析</option>
-            </select></label>
-            <label class="checkbox_label"><input type="checkbox" id="sb_auto" ${s.auto_request ? 'checked' : ''} /><span>自动请求</span></label>
-            <label>请求方式<select id="sb_reqmode" class="text_pole">
-                <option value="sequential"${s.request_mode === 'sequential' ? ' selected' : ''}>依次重试</option>
-                <option value="parallel"${s.request_mode === 'parallel' ? ' selected' : ''}>同时请求</option>
-                <option value="hybrid"${s.request_mode === 'hybrid' ? ' selected' : ''}>先一次后并行</option>
-            </select></label>
-            <label>重试次数<input type="number" id="sb_retries" class="text_pole" value="${s.retry_count}" min="1" max="10" /></label>
-            <label>正文标签名 <small style="opacity:0.7;">(空=不提取)</small><input type="text" id="sb_tag" class="text_pole" value="${s.content_tag || ''}" /></label>
-            <label>清理正则 <small style="opacity:0.7;">(每行一个)</small><textarea id="sb_cleanup" class="text_pole" rows="4" style="font-family:monospace;font-size:0.85em;">${(s.cleanup_patterns || []).join('\n')}</textarea></label>
-            <label class="checkbox_label"><input type="checkbox" id="sb_notification" ${s.notification ? 'checked' : ''} /><span>显示通知</span></label>
-            <div class="menu_button menu_button_icon interactable" id="sb_retry_btn" style="text-align:center;">🔄 手动生成/重试</div>
-            <div class="menu_button menu_button_icon interactable" id="sb_test_btn" style="text-align:center;">🧪 测试提取</div>`;
+            <!-- 请求设置 -->
+            <div class="stk-sub-section">
+                <div class="stk-sub-header">
+                    <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
+                    ⚙️ 请求设置
+                </div>
+                <div class="stk-sub-body">
+                    <div class="stk-toggle"><input type="checkbox" id="sb_auto" ${s.auto_request ? 'checked' : ''} /><span>自动请求</span></div>
+                    <div class="stk-row"><label>请求方式<select id="sb_reqmode" class="text_pole">
+                        <option value="sequential"${s.request_mode === 'sequential' ? ' selected' : ''}>依次重试</option>
+                        <option value="parallel"${s.request_mode === 'parallel' ? ' selected' : ''}>同时请求</option>
+                        <option value="hybrid"${s.request_mode === 'hybrid' ? ' selected' : ''}>先一次后并行</option>
+                    </select></label></div>
+                    <div class="stk-row"><label>重试次数<input type="number" id="sb_retries" class="text_pole" value="${s.retry_count}" min="1" max="10" /></label></div>
+                    <div class="stk-toggle"><input type="checkbox" id="sb_notification" ${s.notification ? 'checked' : ''} /><span>显示通知</span></div>
+                </div>
+            </div>
+            <!-- 内容处理 -->
+            <div class="stk-sub-section">
+                <div class="stk-sub-header">
+                    <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
+                    ✂️ 内容处理
+                </div>
+                <div class="stk-sub-body">
+                    <div class="stk-row"><label>正文标签名 <span>(空=不提取)</span><input type="text" id="sb_tag" class="text_pole" value="${s.content_tag || ''}" /></label></div>
+                    <div class="stk-row"><label>清理正则 <span>(每行一个)</span><textarea id="sb_cleanup" class="text_pole" rows="4">${(s.cleanup_patterns || []).join('\n')}</textarea></label></div>
+                </div>
+            </div>
+            <!-- 操作 -->
+            <div class="stk-sub-section">
+                <div class="stk-sub-header">
+                    <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
+                    🔧 操作
+                </div>
+                <div class="stk-sub-body">
+                    <div class="stk-btn" id="sb_retry_btn" style="text-align:center">🔄 手动生成/重试</div>
+                    <div class="stk-btn" id="sb_test_btn" style="text-align:center">🧪 测试提取</div>
+                </div>
+            </div>`;
     },
 
     bindUI(s, save) {
-        $('#sb_enabled').on('change', function () { s.enabled = this.checked; save(); });
-        $('#sb_mode').on('change', function () { s.update_mode = this.value; save(); });
         $('#sb_auto').on('change', function () { s.auto_request = this.checked; save(); });
         $('#sb_reqmode').on('change', function () { s.request_mode = this.value; save(); });
         $('#sb_retries').on('input', function () { s.retry_count = Number(this.value); save(); });
+        $('#sb_notification').on('change', function () { s.notification = this.checked; save(); });
         $('#sb_tag').on('input', function () { s.content_tag = this.value.trim(); save(); });
         $('#sb_cleanup').on('input', function () { s.cleanup_patterns = this.value.split('\n').map(l => l.trim()).filter(Boolean); save(); });
-        $('#sb_notification').on('change', function () { s.notification = this.checked; save(); });
 
         const self = this;
         $('#sb_retry_btn').on('click', async () => {

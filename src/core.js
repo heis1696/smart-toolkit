@@ -1,8 +1,10 @@
 // @ts-nocheck
 const PLUGIN_NAME = 'smart-toolkit';
+const WORLD_BOOK = '工具书';
 
 export const Core = {
     PLUGIN_NAME,
+    WORLD_BOOK,
 
     // ===== 设置管理 =====
     getSettings() {
@@ -23,6 +25,72 @@ export const Core = {
             if (s[k] === undefined) s[k] = JSON.parse(JSON.stringify(v));
         }
         return s;
+    },
+
+    // ===== 世界书管理 =====
+    async ensureWorldBook(modules) {
+        const ctx = SillyTavern.getContext();
+        try {
+            // 尝试创建世界书（已存在则忽略）
+            const headers = ctx.getRequestHeaders?.() || { 'Content-Type': 'application/json' };
+            await fetch('/api/worldinfo/create', {
+                method: 'POST', headers,
+                body: JSON.stringify({ name: WORLD_BOOK }),
+            });
+
+            // 激活世界书
+            await ctx.executeSlashCommandsWithOptions(`/world silent=true ${WORLD_BOOK}`);
+
+            // 为每个模块创建模板提示词条目
+            for (const m of modules) {
+                if (!m.templatePrompts) continue;
+                for (const [key, def] of Object.entries(m.templatePrompts)) {
+                    await this._ensureEntry(key, def);
+                }
+            }
+            console.log('[SmartToolkit] 世界书已就绪');
+        } catch (e) {
+            console.warn('[SmartToolkit] 世界书初始化失败:', e);
+        }
+    },
+
+    async _ensureEntry(key, defaultContent) {
+        const ctx = SillyTavern.getContext();
+        try {
+            const find = await ctx.executeSlashCommandsWithOptions(`/findentry file=${WORLD_BOOK} field=key ${key}`);
+            if (find?.pipe) return; // 已存在
+        } catch {}
+        try {
+            await ctx.executeSlashCommandsWithOptions(
+                `/createentry file=${WORLD_BOOK} key=${key} ${defaultContent}`
+            );
+        } catch (e) {
+            console.warn(`[SmartToolkit] 创建条目 ${key} 失败:`, e);
+        }
+    },
+
+    async getWorldBookEntry(key) {
+        const ctx = SillyTavern.getContext();
+        try {
+            const find = await ctx.executeSlashCommandsWithOptions(`/findentry file=${WORLD_BOOK} field=key ${key}`);
+            if (!find?.pipe) return null;
+            const get = await ctx.executeSlashCommandsWithOptions(`/getentryfield file=${WORLD_BOOK} field=content ${find.pipe}`);
+            return get?.pipe || null;
+        } catch { return null; }
+    },
+
+    async setWorldBookEntry(key, content) {
+        const ctx = SillyTavern.getContext();
+        try {
+            const find = await ctx.executeSlashCommandsWithOptions(`/findentry file=${WORLD_BOOK} field=key ${key}`);
+            if (find?.pipe) {
+                await ctx.executeSlashCommandsWithOptions(
+                    `/setentryfield file=${WORLD_BOOK} uid=${find.pipe} field=content ${content}`
+                );
+            }
+        } catch (e) {
+            console.warn(`[SmartToolkit] 更新条目 ${key} 失败:`, e);
+        }
     },
 
     // ===== 消息工具 =====

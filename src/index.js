@@ -11,6 +11,9 @@ jQuery(async function () {
     modules.forEach(m => m.init?.());
     UI.render(modules);
 
+    // 初始化世界书
+    await Core.ensureWorldBook(modules);
+
     const throttledMessage = _.throttle(async (msgId) => {
         for (const m of modules) await m.onMessage?.(msgId);
     }, 3000);

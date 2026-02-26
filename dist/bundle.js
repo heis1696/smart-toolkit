@@ -1,8 +1,10 @@
 (() => {
   // src/core.js
   var PLUGIN_NAME = "smart-toolkit";
+  var WORLD_BOOK = "\u5DE5\u5177\u4E66";
   var Core = {
     PLUGIN_NAME,
+    WORLD_BOOK,
     // ===== 设置管理 =====
     getSettings() {
       const ext = SillyTavern.getContext().extensionSettings;
@@ -20,6 +22,67 @@
         if (s[k] === void 0) s[k] = JSON.parse(JSON.stringify(v));
       }
       return s;
+    },
+    // ===== 世界书管理 =====
+    async ensureWorldBook(modules2) {
+      const ctx = SillyTavern.getContext();
+      try {
+        const headers = ctx.getRequestHeaders?.() || { "Content-Type": "application/json" };
+        await fetch("/api/worldinfo/create", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ name: WORLD_BOOK })
+        });
+        await ctx.executeSlashCommandsWithOptions(`/world silent=true ${WORLD_BOOK}`);
+        for (const m of modules2) {
+          if (!m.templatePrompts) continue;
+          for (const [key, def] of Object.entries(m.templatePrompts)) {
+            await this._ensureEntry(key, def);
+          }
+        }
+        console.log("[SmartToolkit] \u4E16\u754C\u4E66\u5DF2\u5C31\u7EEA");
+      } catch (e) {
+        console.warn("[SmartToolkit] \u4E16\u754C\u4E66\u521D\u59CB\u5316\u5931\u8D25:", e);
+      }
+    },
+    async _ensureEntry(key, defaultContent) {
+      const ctx = SillyTavern.getContext();
+      try {
+        const find = await ctx.executeSlashCommandsWithOptions(`/findentry file=${WORLD_BOOK} field=key ${key}`);
+        if (find?.pipe) return;
+      } catch {
+      }
+      try {
+        await ctx.executeSlashCommandsWithOptions(
+          `/createentry file=${WORLD_BOOK} key=${key} ${defaultContent}`
+        );
+      } catch (e) {
+        console.warn(`[SmartToolkit] \u521B\u5EFA\u6761\u76EE ${key} \u5931\u8D25:`, e);
+      }
+    },
+    async getWorldBookEntry(key) {
+      const ctx = SillyTavern.getContext();
+      try {
+        const find = await ctx.executeSlashCommandsWithOptions(`/findentry file=${WORLD_BOOK} field=key ${key}`);
+        if (!find?.pipe) return null;
+        const get = await ctx.executeSlashCommandsWithOptions(`/getentryfield file=${WORLD_BOOK} field=content ${find.pipe}`);
+        return get?.pipe || null;
+      } catch {
+        return null;
+      }
+    },
+    async setWorldBookEntry(key, content) {
+      const ctx = SillyTavern.getContext();
+      try {
+        const find = await ctx.executeSlashCommandsWithOptions(`/findentry file=${WORLD_BOOK} field=key ${key}`);
+        if (find?.pipe) {
+          await ctx.executeSlashCommandsWithOptions(
+            `/setentryfield file=${WORLD_BOOK} uid=${find.pipe} field=content ${content}`
+          );
+        }
+      } catch (e) {
+        console.warn(`[SmartToolkit] \u66F4\u65B0\u6761\u76EE ${key} \u5931\u8D25:`, e);
+      }
     },
     // ===== 消息工具 =====
     getChat() {
@@ -167,6 +230,42 @@
     temperature: 0.7,
     stream: false
   };
+  var CSS = `
+<style>
+#stk-panel{position:fixed;top:0;right:-420px;width:400px;height:100vh;background:var(--SmartThemeBlurTintColor,#1a1a2e);border-left:1px solid var(--SmartThemeBorderColor);z-index:31000;transition:right .3s ease;display:flex;flex-direction:column;overflow:hidden;box-shadow:-4px 0 20px rgba(0,0,0,.3)}
+#stk-panel.open{right:0}
+#stk-panel-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--SmartThemeBorderColor);background:rgba(0,0,0,.15);flex-shrink:0}
+#stk-panel-header h3{margin:0;font-size:14px;display:flex;align-items:center;gap:6px}
+#stk-panel-body{flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:10px}
+#stk-overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,.3);z-index:30999;display:none}
+#stk-overlay.open{display:block}
+.stk-section{border:1px solid var(--SmartThemeBorderColor);border-radius:8px;overflow:hidden}
+.stk-section-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;background:rgba(255,255,255,.03);user-select:none;font-weight:600;font-size:13px}
+.stk-section-header:hover{background:rgba(255,255,255,.06)}
+.stk-section-header .stk-arrow{transition:transform .2s;font-size:11px}
+.stk-section-header.collapsed .stk-arrow{transform:rotate(-90deg)}
+.stk-section-body{padding:8px 12px;display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--SmartThemeBorderColor)}
+.stk-section-body.hidden{display:none}
+.stk-row{display:flex;align-items:center;gap:8px}
+.stk-row label{font-size:12px;flex:1;display:flex;flex-direction:column;gap:2px}
+.stk-row label>span{font-size:11px;opacity:.7}
+.stk-row .text_pole{font-size:12px;padding:4px 8px}
+.stk-row select.text_pole{padding:3px 6px}
+.stk-row textarea.text_pole{font-family:monospace;font-size:11px;resize:vertical}
+.stk-toggle{display:flex;align-items:center;gap:6px;font-size:12px}
+.stk-toggle input[type=checkbox]{margin:0}
+.stk-module-header{display:flex;align-items:center;gap:8px;flex:1}
+.stk-module-controls{display:flex;align-items:center;gap:10px;font-size:12px}
+.stk-btn{padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;text-align:center;border:1px solid var(--SmartThemeBorderColor);background:rgba(255,255,255,.05)}
+.stk-btn:hover{background:rgba(255,255,255,.12)}
+.stk-sub-section{border:1px dashed var(--SmartThemeBorderColor);border-radius:6px;overflow:hidden;margin-top:2px}
+.stk-sub-header{padding:6px 10px;cursor:pointer;font-size:12px;font-weight:500;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.02)}
+.stk-sub-header:hover{background:rgba(255,255,255,.05)}
+.stk-sub-body{padding:6px 10px;display:flex;flex-direction:column;gap:5px;border-top:1px solid rgba(255,255,255,.05)}
+.stk-sub-body.hidden{display:none}
+#stk-top-btn{cursor:pointer;font-size:18px;padding:2px 4px;opacity:.8;transition:opacity .2s}
+#stk-top-btn:hover{opacity:1}
+</style>`;
   var UI = {
     getSharedAPI() {
       const s = Core.getSettings();
@@ -186,43 +285,136 @@
       const s = Core.getSettings();
       if (!s._shared) s._shared = { ...SHARED_DEFAULTS };
       const sh = s._shared;
-      let modulePanels = "";
+      $("head").append(CSS);
+      const topBtn = $('<div id="stk-top-btn" class="fa-solid fa-toolbox interactable" title="Smart Toolkit" tabindex="0"></div>');
+      $("#top-settings-holder").prepend(topBtn);
+      let moduleOverviewHtml = "";
       for (const m of modules2) {
         const ms = Core.getModuleSettings(m.id, m.defaultSettings);
-        modulePanels += `<details style="border:1px dashed var(--SmartThemeBorderColor);border-radius:10px;padding:0.5rem 0.7rem;">
-                <summary style="cursor:pointer;font-weight:600;">${m.name}</summary>
-                <div style="display:flex;flex-direction:column;gap:0.4rem;margin-top:0.4rem;">
+        moduleOverviewHtml += `
+            <div class="stk-row" style="justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+                <div class="stk-toggle">
+                    <input type="checkbox" id="stk_mod_${m.id}_enabled" ${ms.enabled ? "checked" : ""} />
+                    <span style="font-weight:500">${m.name}</span>
+                </div>
+                ${m.defaultSettings.update_mode !== void 0 ? `
+                <select id="stk_mod_${m.id}_mode" class="text_pole" style="width:auto;font-size:11px;padding:2px 4px;">
+                    <option value="inline"${ms.update_mode === "inline" ? " selected" : ""}>\u968FAI\u8F93\u51FA</option>
+                    <option value="extra_model"${ms.update_mode === "extra_model" ? " selected" : ""}>\u989D\u5916\u6A21\u578B</option>
+                </select>` : ""}
+            </div>`;
+      }
+      let modulePanelsHtml = "";
+      for (const m of modules2) {
+        const ms = Core.getModuleSettings(m.id, m.defaultSettings);
+        modulePanelsHtml += `
+            <div class="stk-section" id="stk_module_${m.id}">
+                <div class="stk-section-header">
+                    <span>${m.name} \u8BBE\u7F6E</span>
+                    <span class="stk-arrow fa-solid fa-chevron-down"></span>
+                </div>
+                <div class="stk-section-body">
                     ${m.renderUI(ms)}
                 </div>
-            </details>`;
+            </div>`;
       }
-      const html = `<div class="inline-drawer" id="smart-toolkit-settings">
-            <div class="inline-drawer-toggle inline-drawer-header">
-                <b>\u{1F9F0} Smart Toolkit</b>
-                <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+      const panelHtml = `
+        <div id="stk-overlay"></div>
+        <div id="stk-panel">
+            <div id="stk-panel-header">
+                <h3>\u{1F9F0} Smart Toolkit</h3>
+                <div id="stk-panel-close" class="fa-solid fa-xmark interactable" style="cursor:pointer;font-size:16px;padding:4px" title="\u5173\u95ED"></div>
             </div>
-            <div class="inline-drawer-content" style="flex-direction:column;gap:0.75rem;padding-top:0.5rem;">
-                <details style="border:1px dashed var(--SmartThemeBorderColor);border-radius:10px;padding:0.5rem 0.7rem;">
-                    <summary style="cursor:pointer;font-weight:600;">\u{1F50C} \u5171\u4EAB API \u914D\u7F6E</summary>
-                    <div style="display:flex;flex-direction:column;gap:0.4rem;margin-top:0.4rem;">
-                        <label class="checkbox_label">
-                            <input type="checkbox" id="stk_use_preset" ${sh.use_preset ? "checked" : ""} />
-                            <span>\u4F7F\u7528\u5F53\u524D\u9884\u8BBE</span>
-                        </label>
-                        <div id="stk_custom_api" style="display:${sh.use_preset ? "none" : "flex"};flex-direction:column;gap:0.4rem;">
-                            <label>API \u5730\u5740<input type="text" id="stk_api_url" class="text_pole" value="${sh.api_url || ""}" placeholder="http://localhost:1234/v1" /></label>
-                            <label>API \u5BC6\u94A5<input type="password" id="stk_api_key" class="text_pole" value="${sh.api_key || ""}" /></label>
-                            <label>\u6A21\u578B\u540D\u79F0<input type="text" id="stk_model_name" class="text_pole" value="${sh.model_name || ""}" /></label>
-                            <label>\u6700\u5927 token<input type="number" id="stk_max_tokens" class="text_pole" value="${sh.max_tokens}" min="256" max="8192" step="256" /></label>
-                            <label>\u6E29\u5EA6<input type="number" id="stk_temperature" class="text_pole" value="${sh.temperature}" min="0" max="2" step="0.1" /></label>
-                            <label class="checkbox_label"><input type="checkbox" id="stk_stream" ${sh.stream ? "checked" : ""} /><span>\u6D41\u5F0F\u4F20\u8F93</span></label>
+            <div id="stk-panel-body">
+                <!-- \u5171\u4EABAPI\u914D\u7F6E + \u6A21\u5757\u603B\u89C8 -->
+                <div class="stk-section">
+                    <div class="stk-section-header">
+                        <span>\u{1F50C} \u5171\u4EAB API \u914D\u7F6E</span>
+                        <span class="stk-arrow fa-solid fa-chevron-down"></span>
+                    </div>
+                    <div class="stk-section-body">
+                        <!-- \u6A21\u5757\u542F\u7528/\u66F4\u65B0\u65B9\u5F0F -->
+                        <div class="stk-sub-section">
+                            <div class="stk-sub-header">
+                                <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
+                                \u{1F4CB} \u6A21\u5757\u7BA1\u7406
+                            </div>
+                            <div class="stk-sub-body">
+                                ${moduleOverviewHtml}
+                            </div>
+                        </div>
+                        <!-- API\u8BBE\u7F6E -->
+                        <div class="stk-sub-section">
+                            <div class="stk-sub-header">
+                                <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
+                                \u{1F517} API \u8FDE\u63A5
+                            </div>
+                            <div class="stk-sub-body">
+                                <div class="stk-toggle">
+                                    <input type="checkbox" id="stk_use_preset" ${sh.use_preset ? "checked" : ""} />
+                                    <span>\u4F7F\u7528\u5F53\u524D\u9884\u8BBE</span>
+                                </div>
+                                <div id="stk_custom_api" style="display:${sh.use_preset ? "none" : "flex"};flex-direction:column;gap:6px;">
+                                    <div class="stk-row"><label>API \u5730\u5740<input type="text" id="stk_api_url" class="text_pole" value="${sh.api_url || ""}" placeholder="http://localhost:1234/v1" /></label></div>
+                                    <div class="stk-row"><label>API \u5BC6\u94A5<input type="password" id="stk_api_key" class="text_pole" value="${sh.api_key || ""}" /></label></div>
+                                    <div class="stk-row"><label>\u6A21\u578B\u540D\u79F0<input type="text" id="stk_model_name" class="text_pole" value="${sh.model_name || ""}" /></label></div>
+                                    <div class="stk-row" style="gap:12px">
+                                        <label>\u6700\u5927token<input type="number" id="stk_max_tokens" class="text_pole" value="${sh.max_tokens}" min="256" max="8192" step="256" /></label>
+                                        <label>\u6E29\u5EA6<input type="number" id="stk_temperature" class="text_pole" value="${sh.temperature}" min="0" max="2" step="0.1" /></label>
+                                    </div>
+                                    <div class="stk-toggle">
+                                        <input type="checkbox" id="stk_stream" ${sh.stream ? "checked" : ""} />
+                                        <span>\u6D41\u5F0F\u4F20\u8F93</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </details>
-                ${modulePanels}
+                </div>
+
+                <!-- \u6A21\u677F\u63D0\u793A\u8BCD -->
+                <div class="stk-section">
+                    <div class="stk-section-header collapsed">
+                        <span>\u{1F4DD} \u6A21\u677F\u63D0\u793A\u8BCD\uFF08\u4E16\u754C\u4E66\uFF09</span>
+                        <span class="stk-arrow fa-solid fa-chevron-down"></span>
+                    </div>
+                    <div class="stk-section-body hidden" id="stk_prompts_body">
+                        <div style="font-size:11px;opacity:.6;margin-bottom:4px;">\u63D0\u793A\u8BCD\u5B58\u50A8\u5728\u4E16\u754C\u4E66\u300C${Core.WORLD_BOOK}\u300D\u4E2D\uFF0C\u4FEE\u6539\u540E\u81EA\u52A8\u540C\u6B65\u3002</div>
+                        ${modules2.map((m) => {
+        if (!m.templatePrompts) return "";
+        return Object.entries(m.templatePrompts).map(([key, def]) => `
+                                <div class="stk-sub-section">
+                                    <div class="stk-sub-header">
+                                        <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
+                                        ${m.name} - ${key}
+                                    </div>
+                                    <div class="stk-sub-body hidden">
+                                        <textarea id="stk_prompt_${key}" class="text_pole" rows="8" style="font-family:monospace;font-size:11px;white-space:pre;resize:vertical">${_.escape(def)}</textarea>
+                                        <div class="stk-btn stk_prompt_save" data-key="${key}" style="align-self:flex-end">\u{1F4BE} \u4FDD\u5B58\u5230\u4E16\u754C\u4E66</div>
+                                    </div>
+                                </div>
+                            `).join("");
+      }).join("")}
+                    </div>
+                </div>
+
+                <!-- \u5404\u6A21\u5757\u8BE6\u7EC6\u8BBE\u7F6E -->
+                ${modulePanelsHtml}
             </div>
         </div>`;
-      $("#extensions_settings2").append(html);
+      $("body").append(panelHtml);
+      const togglePanel = () => {
+        $("#stk-panel, #stk-overlay").toggleClass("open");
+      };
+      topBtn.on("click", togglePanel);
+      $("#stk-panel-close, #stk-overlay").on("click", togglePanel);
+      $(document).on("click", ".stk-section-header", function() {
+        $(this).toggleClass("collapsed").next(".stk-section-body").toggleClass("hidden");
+      });
+      $(document).on("click", ".stk-sub-header", function() {
+        $(this).find(".stk-arrow").toggleClass("collapsed");
+        $(this).next(".stk-sub-body").toggleClass("hidden");
+      });
       const save = () => Core.saveSettings();
       $("#stk_use_preset").on("change", function() {
         sh.use_preset = this.checked;
@@ -255,6 +447,25 @@
       });
       for (const m of modules2) {
         const ms = Core.getModuleSettings(m.id, m.defaultSettings);
+        $(`#stk_mod_${m.id}_enabled`).on("change", function() {
+          ms.enabled = this.checked;
+          save();
+        });
+        if (m.defaultSettings.update_mode !== void 0) {
+          $(`#stk_mod_${m.id}_mode`).on("change", function() {
+            ms.update_mode = this.value;
+            save();
+          });
+        }
+      }
+      $(".stk_prompt_save").on("click", async function() {
+        const key = $(this).data("key");
+        const content = $(`#stk_prompt_${key}`).val();
+        await Core.setWorldBookEntry(key, content);
+        toastr.success(`\u5DF2\u4FDD\u5B58\u5230\u4E16\u754C\u4E66`, key);
+      });
+      for (const m of modules2) {
+        const ms = Core.getModuleSettings(m.id, m.defaultSettings);
         m.bindUI(ms, save);
       }
     }
@@ -264,7 +475,7 @@
   var STATUS_REGEX = /<StatusBlock>([\s\S]*?)<\/StatusBlock>/i;
   var STATUS_FULL_REGEX = /<StatusBlock>[\s\S]*?<\/StatusBlock>/i;
   var PLACEHOLDER = "<StatusBarPlaceholder/>";
-  var SYSTEM_PROMPT = `\u4F60\u662F\u72B6\u6001\u680F\u751F\u6210\u5668\u3002\u6839\u636E\u6B63\u6587\u548C\u4E0A\u8F6E\u72B6\u6001\u8F93\u51FA\u66F4\u65B0\u540E\u7684\u72B6\u6001\u680F\u3002
+  var DEFAULT_SYSTEM_PROMPT = `\u4F60\u662F\u72B6\u6001\u680F\u751F\u6210\u5668\u3002\u6839\u636E\u6B63\u6587\u548C\u4E0A\u8F6E\u72B6\u6001\u8F93\u51FA\u66F4\u65B0\u540E\u7684\u72B6\u6001\u680F\u3002
 \u89C4\u5219\uFF1A\u6BCF\u5B57\u6BB5\u72EC\u7ACB\u5B8C\u6574\u586B\u5199\uFF0C\u7981\u6B62\u4F7F\u7528"\u540C\u4E0A""\u65E0\u53D8\u5316"\u7B49\u7701\u7565\u3002\u53EA\u8F93\u51FA <StatusBlock>...</StatusBlock>\uFF0C\u4E0D\u8F93\u51FA\u5176\u4ED6\u5185\u5BB9\u3002
 
 \u8F93\u51FA\u683C\u5F0F\uFF1A
@@ -358,6 +569,10 @@
       ],
       notification: true
     },
+    // 模板提示词（会同步到世界书）
+    templatePrompts: {
+      statusbar_system_prompt: DEFAULT_SYSTEM_PROMPT
+    },
     init() {
     },
     async onMessage(messageId) {
@@ -392,6 +607,10 @@
       SillyTavern.getContext().saveChat();
       return true;
     },
+    async _getSystemPrompt() {
+      const wb = await Core.getWorldBookEntry("statusbar_system_prompt");
+      return wb || DEFAULT_SYSTEM_PROMPT;
+    },
     async _runExtra(msgId, settings) {
       const msg = Core.getChat()[msgId];
       if (!msg) return;
@@ -403,9 +622,10 @@
       const prev = getLastStatus(msgId - 1);
       const prevBlock = prev ? "<PreviousStatus>\n<StatusBlock>\n" + prev.raw + "\n</StatusBlock>\n</PreviousStatus>" : "<PreviousStatus>\u65E0</PreviousStatus>";
       const userMessage = prevBlock + "\n\n<CurrentContent>\n" + content + "\n</CurrentContent>\n\n\u8BF7\u751F\u6210\u66F4\u65B0\u540E\u7684\u72B6\u6001\u680F\u3002";
+      const systemPrompt = await this._getSystemPrompt();
       const api = UI.getSharedAPI();
       const result = await Core.requestExtraModel({
-        systemPrompt: SYSTEM_PROMPT,
+        systemPrompt,
         userMessage,
         api,
         validate: parseBlock,
@@ -433,33 +653,47 @@
     },
     renderUI(s) {
       return `
-            <label class="checkbox_label"><input type="checkbox" id="sb_enabled" ${s.enabled ? "checked" : ""} /><span>\u542F\u7528</span></label>
-            <label>\u66F4\u65B0\u65B9\u5F0F<select id="sb_mode" class="text_pole">
-                <option value="inline"${s.update_mode === "inline" ? " selected" : ""}>\u968F AI \u8F93\u51FA</option>
-                <option value="extra_model"${s.update_mode === "extra_model" ? " selected" : ""}>\u989D\u5916\u6A21\u578B\u89E3\u6790</option>
-            </select></label>
-            <label class="checkbox_label"><input type="checkbox" id="sb_auto" ${s.auto_request ? "checked" : ""} /><span>\u81EA\u52A8\u8BF7\u6C42</span></label>
-            <label>\u8BF7\u6C42\u65B9\u5F0F<select id="sb_reqmode" class="text_pole">
-                <option value="sequential"${s.request_mode === "sequential" ? " selected" : ""}>\u4F9D\u6B21\u91CD\u8BD5</option>
-                <option value="parallel"${s.request_mode === "parallel" ? " selected" : ""}>\u540C\u65F6\u8BF7\u6C42</option>
-                <option value="hybrid"${s.request_mode === "hybrid" ? " selected" : ""}>\u5148\u4E00\u6B21\u540E\u5E76\u884C</option>
-            </select></label>
-            <label>\u91CD\u8BD5\u6B21\u6570<input type="number" id="sb_retries" class="text_pole" value="${s.retry_count}" min="1" max="10" /></label>
-            <label>\u6B63\u6587\u6807\u7B7E\u540D <small style="opacity:0.7;">(\u7A7A=\u4E0D\u63D0\u53D6)</small><input type="text" id="sb_tag" class="text_pole" value="${s.content_tag || ""}" /></label>
-            <label>\u6E05\u7406\u6B63\u5219 <small style="opacity:0.7;">(\u6BCF\u884C\u4E00\u4E2A)</small><textarea id="sb_cleanup" class="text_pole" rows="4" style="font-family:monospace;font-size:0.85em;">${(s.cleanup_patterns || []).join("\n")}</textarea></label>
-            <label class="checkbox_label"><input type="checkbox" id="sb_notification" ${s.notification ? "checked" : ""} /><span>\u663E\u793A\u901A\u77E5</span></label>
-            <div class="menu_button menu_button_icon interactable" id="sb_retry_btn" style="text-align:center;">\u{1F504} \u624B\u52A8\u751F\u6210/\u91CD\u8BD5</div>
-            <div class="menu_button menu_button_icon interactable" id="sb_test_btn" style="text-align:center;">\u{1F9EA} \u6D4B\u8BD5\u63D0\u53D6</div>`;
+            <!-- \u8BF7\u6C42\u8BBE\u7F6E -->
+            <div class="stk-sub-section">
+                <div class="stk-sub-header">
+                    <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
+                    \u2699\uFE0F \u8BF7\u6C42\u8BBE\u7F6E
+                </div>
+                <div class="stk-sub-body">
+                    <div class="stk-toggle"><input type="checkbox" id="sb_auto" ${s.auto_request ? "checked" : ""} /><span>\u81EA\u52A8\u8BF7\u6C42</span></div>
+                    <div class="stk-row"><label>\u8BF7\u6C42\u65B9\u5F0F<select id="sb_reqmode" class="text_pole">
+                        <option value="sequential"${s.request_mode === "sequential" ? " selected" : ""}>\u4F9D\u6B21\u91CD\u8BD5</option>
+                        <option value="parallel"${s.request_mode === "parallel" ? " selected" : ""}>\u540C\u65F6\u8BF7\u6C42</option>
+                        <option value="hybrid"${s.request_mode === "hybrid" ? " selected" : ""}>\u5148\u4E00\u6B21\u540E\u5E76\u884C</option>
+                    </select></label></div>
+                    <div class="stk-row"><label>\u91CD\u8BD5\u6B21\u6570<input type="number" id="sb_retries" class="text_pole" value="${s.retry_count}" min="1" max="10" /></label></div>
+                    <div class="stk-toggle"><input type="checkbox" id="sb_notification" ${s.notification ? "checked" : ""} /><span>\u663E\u793A\u901A\u77E5</span></div>
+                </div>
+            </div>
+            <!-- \u5185\u5BB9\u5904\u7406 -->
+            <div class="stk-sub-section">
+                <div class="stk-sub-header">
+                    <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
+                    \u2702\uFE0F \u5185\u5BB9\u5904\u7406
+                </div>
+                <div class="stk-sub-body">
+                    <div class="stk-row"><label>\u6B63\u6587\u6807\u7B7E\u540D <span>(\u7A7A=\u4E0D\u63D0\u53D6)</span><input type="text" id="sb_tag" class="text_pole" value="${s.content_tag || ""}" /></label></div>
+                    <div class="stk-row"><label>\u6E05\u7406\u6B63\u5219 <span>(\u6BCF\u884C\u4E00\u4E2A)</span><textarea id="sb_cleanup" class="text_pole" rows="4">${(s.cleanup_patterns || []).join("\n")}</textarea></label></div>
+                </div>
+            </div>
+            <!-- \u64CD\u4F5C -->
+            <div class="stk-sub-section">
+                <div class="stk-sub-header">
+                    <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
+                    \u{1F527} \u64CD\u4F5C
+                </div>
+                <div class="stk-sub-body">
+                    <div class="stk-btn" id="sb_retry_btn" style="text-align:center">\u{1F504} \u624B\u52A8\u751F\u6210/\u91CD\u8BD5</div>
+                    <div class="stk-btn" id="sb_test_btn" style="text-align:center">\u{1F9EA} \u6D4B\u8BD5\u63D0\u53D6</div>
+                </div>
+            </div>`;
     },
     bindUI(s, save) {
-      $("#sb_enabled").on("change", function() {
-        s.enabled = this.checked;
-        save();
-      });
-      $("#sb_mode").on("change", function() {
-        s.update_mode = this.value;
-        save();
-      });
       $("#sb_auto").on("change", function() {
         s.auto_request = this.checked;
         save();
@@ -472,16 +706,16 @@
         s.retry_count = Number(this.value);
         save();
       });
+      $("#sb_notification").on("change", function() {
+        s.notification = this.checked;
+        save();
+      });
       $("#sb_tag").on("input", function() {
         s.content_tag = this.value.trim();
         save();
       });
       $("#sb_cleanup").on("input", function() {
         s.cleanup_patterns = this.value.split("\n").map((l) => l.trim()).filter(Boolean);
-        save();
-      });
-      $("#sb_notification").on("change", function() {
-        s.notification = this.checked;
         save();
       });
       const self = this;
@@ -531,6 +765,7 @@
     const ctx = SillyTavern.getContext();
     modules.forEach((m) => m.init?.());
     UI.render(modules);
+    await Core.ensureWorldBook(modules);
     const throttledMessage = _.throttle(async (msgId) => {
       for (const m of modules) await m.onMessage?.(msgId);
     }, 3e3);
