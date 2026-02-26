@@ -11,11 +11,12 @@
 smart-toolkit/
 ├── package.json          # 项目配置 & 构建脚本
 ├── src/
-│   ├── index.js          # 入口：注册模块、绑定事件、初始化世界书
+│   ├── index.js          # 入口：注册模块、绑定事件、初始化世界书、清理 auxiliary_tool 标签
 │   ├── core.js           # 核心层：设置管理、消息工具、API 请求、世界书管理
 │   ├── ui.js             # UI 层：顶栏按钮、侧滑面板、共享配置 + 模块管理
 │   └── modules/
-│       └── statusbar.js  # 模块：状态栏生成器
+│       ├── statusbar.js  # 模块：状态栏生成器
+│       └── plotOptions.js # 模块：剧情推进选项（悬浮窗）
 └── dist/
     └── bundle.js         # esbuild 构建产物 (IIFE)
 ```
@@ -98,6 +99,7 @@ index.js (入口/事件总线)
 | 条目 Key | 来源模块 | 说明 |
 |----------|----------|------|
 | `statusbar_system_prompt` | StatusBar | 状态栏生成系统提示词 |
+| `plot_options_prompt` | PlotOptions | 剧情推进选项生成提示词 |
 
 模块通过 `templatePrompts` 属性声明需要的提示词条目，插件初始化时自动同步到世界书。
 运行时优先从世界书读取提示词，用户可通过世界书 UI 或插件面板编辑。
@@ -126,6 +128,9 @@ export const MyModule = {
 注意：模块的 `enabled` 和 `update_mode` 已集成到共享 API 配置的「模块管理」中，
 `renderUI` 只需返回模块特有的详细设置。
 
+所有模块的 AI 输出内容必须包裹在 `<auxiliary_tool></auxiliary_tool>` 标签内，
+入口层会在所有模块处理完成后自动清理这些标签。
+
 ---
 
 ## 设置存储结构
@@ -134,6 +139,7 @@ export const MyModule = {
 extensionSettings['smart-toolkit'] = {
     _shared: { use_preset, api_url, api_key, model_name, max_tokens, temperature, stream },
     statusbar: { enabled, update_mode, auto_request, retry_count, request_mode, ... },
+    plot_options: { enabled, update_mode, auto_request, retry_count, request_mode, ... },
 }
 ```
 

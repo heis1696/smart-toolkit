@@ -265,6 +265,13 @@
 .stk-sub-body.hidden{display:none}
 #stk-top-btn{cursor:pointer;font-size:18px;padding:2px 4px;opacity:.8;transition:opacity .2s}
 #stk-top-btn:hover{opacity:1}
+#stk-plot-options{position:fixed;bottom:80px;right:20px;width:340px;background:var(--SmartThemeBlurTintColor,#1a1a2e);border:1px solid var(--SmartThemeBorderColor);border-radius:12px;z-index:31001;box-shadow:0 8px 32px rgba(0,0,0,.4);overflow:hidden}
+.stk-po-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;font-weight:600;font-size:13px;border-bottom:1px solid var(--SmartThemeBorderColor);background:rgba(255,255,255,.03);cursor:move;user-select:none}
+#stk-po-close{cursor:pointer;padding:4px;opacity:.7}
+#stk-po-close:hover{opacity:1}
+.stk-po-item{padding:10px 14px;cursor:pointer;font-size:12px;border-bottom:1px solid rgba(255,255,255,.05);transition:background .15s}
+.stk-po-item:hover{background:rgba(255,255,255,.08)}
+.stk-po-item:last-child{border-bottom:none}
 </style>`;
   var UI = {
     getSharedAPI() {
@@ -565,7 +572,8 @@
         "<StatusBlock>[\\s\\S]*?</StatusBlock>",
         "<StatusBarPlaceholder/>",
         "<UpdateVariable>[\\s\\S]*?</UpdateVariable>",
-        "<StatusPlaceHolderImpl/>"
+        "<StatusPlaceHolderImpl/>",
+        "<auxiliary_tool>[\\s\\S]*?</auxiliary_tool>"
       ],
       notification: true
     },
@@ -759,8 +767,213 @@
     }
   };
 
+  // src/modules/plotOptions.js
+  var XX_REGEX = /<xx>([\s\S]*?)<\/xx>/i;
+  var XX_FULL_REGEX = /<xx>[\s\S]*?<\/xx>/i;
+  var DEFAULT_PROMPT = `\u5728\u6B63\u6587\u540E\u7ED9<user>\u63D0\u4F9B\u56DB\u4E2A\u7B26\u5408<user>\u4EBA\u8BBE\u7684<user>\u7684\u8BDD\u548C\u52A8\u4F5C\uFF0C\u7528<xx>\u6807\u7B7E\u5305\u88F9\uFF0C\u5FC5\u987B\u653E\u5728<auxiliary_tool>\u5185\u3002
+Format:
+<xx>
+>\u9009\u9879\u4E00\uFF1A[\u63D0\u4F9B\u4E00\u4E2A\u8C28\u614E\u3001\u89C2\u5BDF\u6027\u7684\u884C\u52A8\u9009\u9879]
+>\u9009\u9879\u4E8C\uFF1A[\u63D0\u4F9B\u4E00\u4E2A\u79EF\u6781\u3001\u4E3B\u52A8\u4EE5\u63A8\u8FDB\u4EFB\u52A1\u7684\u884C\u52A8\u9009\u9879]
+>\u9009\u9879\u4E09\uFF1A[\u63D0\u4F9B\u4E00\u4E2A\u4FA7\u91CD\u4E8E\u4EBA\u9645\u5173\u7CFB\u6216\u79C1\u4EBA\u4E92\u52A8\u7684\u884C\u52A8\u9009\u9879]
+>\u9009\u9879\u56DB\uFF1A[\u63D0\u4F9B\u4E00\u4E2A\u7B26\u5408\u5F53\u4E0B\u60C5\u666F\u7684\uFF0C\u5E26\u6709\u60C5\u8272\u6216\u6311\u9017\u610F\u5473\u7684NSFW\u884C\u52A8\u9009\u9879]
+</xx>`;
+  var ICONS = ["\u{1F50D}", "\u26A1", "\u{1F4AC}", "\u{1F525}"];
+  function parseOptions(text) {
+    const match = text.match(XX_REGEX);
+    if (!match) return null;
+    const options = [];
+    const re = /^>选项[一二三四]：(.+)$/gm;
+    let m;
+    while ((m = re.exec(match[1])) !== null) {
+      options.push(m[1].trim());
+    }
+    return options.length ? options : null;
+  }
+  function showOptions(options) {
+    $("#stk-plot-options").remove();
+    const items = options.map(
+      (o, i) => `<div class="stk-po-item" data-idx="${i}">${ICONS[i] || "\u25B6"} ${_.escape(o)}</div>`
+    ).join("");
+    $("body").append(`
+        <div id="stk-plot-options">
+            <div class="stk-po-header">
+                <span>\u{1F3AD} \u5267\u60C5\u63A8\u8FDB</span>
+                <span id="stk-po-close" class="fa-solid fa-xmark"></span>
+            </div>
+            ${items}
+        </div>
+    `);
+    let isDragging = false, offsetX, offsetY;
+    $("#stk-plot-options .stk-po-header").on("mousedown", function(e) {
+      if ($(e.target).is("#stk-po-close")) return;
+      isDragging = true;
+      const rect = $("#stk-plot-options")[0].getBoundingClientRect();
+      offsetX = e.clientX - rect.left;
+      offsetY = e.clientY - rect.top;
+      e.preventDefault();
+    });
+    $(document).on("mousemove.stkpo", function(e) {
+      if (!isDragging) return;
+      $("#stk-plot-options").css({
+        left: e.clientX - offsetX + "px",
+        top: e.clientY - offsetY + "px",
+        right: "auto",
+        bottom: "auto"
+      });
+    });
+    $(document).on("mouseup.stkpo", function() {
+      isDragging = false;
+    });
+    $("#stk-po-close").on("click", () => {
+      $("#stk-plot-options").remove();
+      $(document).off(".stkpo");
+    });
+    $(".stk-po-item").on("click", function() {
+      const text = options[$(this).data("idx")];
+      $("#stk-plot-options").remove();
+      $(document).off(".stkpo");
+      if (!text) return;
+      $("#send_textarea").val(text).trigger("input");
+      $("#send_but").trigger("click");
+    });
+  }
+  var _processing2 = false;
+  var PlotOptionsModule = {
+    id: "plot_options",
+    name: "\u{1F3AD} \u5267\u60C5\u63A8\u8FDB",
+    defaultSettings: {
+      enabled: true,
+      update_mode: "inline",
+      auto_request: true,
+      retry_count: 3,
+      request_mode: "sequential",
+      content_tag: "",
+      cleanup_patterns: [
+        "<xx>[\\s\\S]*?</xx>",
+        "<auxiliary_tool>[\\s\\S]*?</auxiliary_tool>"
+      ],
+      notification: true
+    },
+    templatePrompts: {
+      plot_options_prompt: DEFAULT_PROMPT
+    },
+    init() {
+    },
+    async onMessage(msgId) {
+      const s = Core.getModuleSettings(this.id, this.defaultSettings);
+      if (!s.enabled || _processing2) return;
+      const msg = Core.getChat()[msgId];
+      if (!msg || msg.is_user) return;
+      _processing2 = true;
+      try {
+        const options = parseOptions(msg.mes || "");
+        if (options) {
+          msg.mes = msg.mes.replace(XX_FULL_REGEX, "").trim();
+          SillyTavern.getContext().saveChat();
+          showOptions(options);
+          return;
+        }
+        if (s.update_mode === "extra_model" && s.auto_request) {
+          await this._runExtra(msgId, s);
+        }
+      } finally {
+        _processing2 = false;
+      }
+    },
+    onChatReady() {
+    },
+    async _getSystemPrompt() {
+      const wb = await Core.getWorldBookEntry("plot_options_prompt");
+      return wb || DEFAULT_PROMPT;
+    },
+    async _runExtra(msgId, settings) {
+      const msg = Core.getChat()[msgId];
+      if (!msg) return;
+      if (settings.notification) toastr.info("\u6B63\u5728\u751F\u6210\u5267\u60C5\u9009\u9879...", "[PlotOptions]");
+      const content = Core.extractContent(msg.mes || "", {
+        contentTag: settings.content_tag,
+        cleanupPatterns: settings.cleanup_patterns
+      });
+      const systemPrompt = await this._getSystemPrompt();
+      const api = UI.getSharedAPI();
+      const result = await Core.requestExtraModel({
+        systemPrompt,
+        userMessage: content + "\n\n\u8BF7\u6839\u636E\u4EE5\u4E0A\u6B63\u6587\u751F\u6210\u56DB\u4E2A\u5267\u60C5\u63A8\u8FDB\u9009\u9879\u3002",
+        api,
+        validate: parseOptions,
+        retries: settings.retry_count,
+        requestMode: settings.request_mode,
+        onRetry: (i, max) => {
+          if (settings.notification) toastr.info(`\u91CD\u8BD5 ${i}/${max}`, "[PlotOptions]");
+        }
+      });
+      if (result) {
+        showOptions(result);
+        if (settings.notification) toastr.success("\u5267\u60C5\u9009\u9879\u5DF2\u751F\u6210", "[PlotOptions]");
+      } else {
+        if (settings.notification) toastr.error("\u5267\u60C5\u9009\u9879\u751F\u6210\u5931\u8D25", "[PlotOptions]");
+      }
+    },
+    renderUI(s) {
+      return `
+            <div class="stk-sub-section">
+                <div class="stk-sub-header">
+                    <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
+                    \u2699\uFE0F \u8BF7\u6C42\u8BBE\u7F6E
+                </div>
+                <div class="stk-sub-body">
+                    <div class="stk-toggle"><input type="checkbox" id="po_auto" ${s.auto_request ? "checked" : ""} /><span>\u81EA\u52A8\u8BF7\u6C42</span></div>
+                    <div class="stk-row"><label>\u8BF7\u6C42\u65B9\u5F0F<select id="po_reqmode" class="text_pole">
+                        <option value="sequential"${s.request_mode === "sequential" ? " selected" : ""}>\u4F9D\u6B21\u91CD\u8BD5</option>
+                        <option value="parallel"${s.request_mode === "parallel" ? " selected" : ""}>\u540C\u65F6\u8BF7\u6C42</option>
+                        <option value="hybrid"${s.request_mode === "hybrid" ? " selected" : ""}>\u5148\u4E00\u6B21\u540E\u5E76\u884C</option>
+                    </select></label></div>
+                    <div class="stk-row"><label>\u91CD\u8BD5\u6B21\u6570<input type="number" id="po_retries" class="text_pole" value="${s.retry_count}" min="1" max="10" /></label></div>
+                    <div class="stk-toggle"><input type="checkbox" id="po_notification" ${s.notification ? "checked" : ""} /><span>\u663E\u793A\u901A\u77E5</span></div>
+                </div>
+            </div>
+            <div class="stk-sub-section">
+                <div class="stk-sub-header">
+                    <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
+                    \u{1F527} \u64CD\u4F5C
+                </div>
+                <div class="stk-sub-body">
+                    <div class="stk-btn" id="po_retry_btn" style="text-align:center">\u{1F504} \u624B\u52A8\u751F\u6210/\u91CD\u8BD5</div>
+                </div>
+            </div>`;
+    },
+    bindUI(s, save) {
+      $("#po_auto").on("change", function() {
+        s.auto_request = this.checked;
+        save();
+      });
+      $("#po_reqmode").on("change", function() {
+        s.request_mode = this.value;
+        save();
+      });
+      $("#po_retries").on("input", function() {
+        s.retry_count = Number(this.value);
+        save();
+      });
+      $("#po_notification").on("change", function() {
+        s.notification = this.checked;
+        save();
+      });
+      const self = this;
+      $("#po_retry_btn").on("click", async () => {
+        const lastId = Core.getLastMessageId();
+        if (lastId < 0) {
+          toastr.warning("\u6CA1\u6709\u6D88\u606F", "[PlotOptions]");
+          return;
+        }
+        await self._runExtra(lastId, s);
+      });
+    }
+  };
+
   // src/index.js
-  var modules = [StatusBarModule];
+  var modules = [StatusBarModule, PlotOptionsModule];
   jQuery(async function() {
     const ctx = SillyTavern.getContext();
     modules.forEach((m) => m.init?.());
@@ -768,6 +981,11 @@
     await Core.ensureWorldBook(modules);
     const throttledMessage = _.throttle(async (msgId) => {
       for (const m of modules) await m.onMessage?.(msgId);
+      const msg = Core.getChat()[msgId];
+      if (msg?.mes && /<\/?auxiliary_tool>/i.test(msg.mes)) {
+        msg.mes = msg.mes.replace(/<\/?auxiliary_tool>/gi, "").trim();
+        SillyTavern.getContext().saveChat();
+      }
     }, 3e3);
     ctx.eventSource.on(ctx.eventTypes.MESSAGE_RECEIVED, throttledMessage);
     ctx.eventSource.on(ctx.eventTypes.CHAT_COMPLETION_SETTINGS_READY, (data) => {

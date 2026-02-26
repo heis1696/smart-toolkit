@@ -101,6 +101,7 @@ export const StatusBarModule = {
             '<StatusBarPlaceholder/>',
             '<UpdateVariable>[\\s\\S]*?</UpdateVariable>',
             '<StatusPlaceHolderImpl/>',
+            '<auxiliary_tool>[\\s\\S]*?</auxiliary_tool>',
         ],
         notification: true,
     },

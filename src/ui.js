@@ -46,6 +46,13 @@ const CSS = `
 .stk-sub-body.hidden{display:none}
 #stk-top-btn{cursor:pointer;font-size:18px;padding:2px 4px;opacity:.8;transition:opacity .2s}
 #stk-top-btn:hover{opacity:1}
+#stk-plot-options{position:fixed;bottom:80px;right:20px;width:340px;background:var(--SmartThemeBlurTintColor,#1a1a2e);border:1px solid var(--SmartThemeBorderColor);border-radius:12px;z-index:31001;box-shadow:0 8px 32px rgba(0,0,0,.4);overflow:hidden}
+.stk-po-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;font-weight:600;font-size:13px;border-bottom:1px solid var(--SmartThemeBorderColor);background:rgba(255,255,255,.03);cursor:move;user-select:none}
+#stk-po-close{cursor:pointer;padding:4px;opacity:.7}
+#stk-po-close:hover{opacity:1}
+.stk-po-item{padding:10px 14px;cursor:pointer;font-size:12px;border-bottom:1px solid rgba(255,255,255,.05);transition:background .15s}
+.stk-po-item:hover{background:rgba(255,255,255,.08)}
+.stk-po-item:last-child{border-bottom:none}
 </style>`;
 
 export const UI = {
