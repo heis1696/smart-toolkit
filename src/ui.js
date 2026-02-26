@@ -21,7 +21,7 @@ const CSS = `
 #stk-overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,.3);z-index:30999;display:none}
 #stk-overlay.open{display:block}
 .stk-section{border:1px solid var(--SmartThemeBorderColor);border-radius:8px;overflow:hidden}
-.stk-section-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;user-select:none;font-weight:600;font-size:13px;color:var(--SmartThemeBodyColor)}
+.stk-section-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;user-select:none;font-weight:600;font-size:13px;color:var(--SmartThemeBodyColor);pointer-events:auto}
 .stk-section-header:hover{background:var(--black30a)}
 .stk-section-header .stk-arrow{transition:transform .2s;font-size:11px}
 .stk-section-header.collapsed .stk-arrow{transform:rotate(-90deg)}
@@ -38,10 +38,10 @@ const CSS = `
 .stk-toggle input[type=checkbox]{margin:0}
 .stk-module-header{display:flex;align-items:center;gap:8px;flex:1}
 .stk-module-controls{display:flex;align-items:center;gap:10px;font-size:12px}
-.stk-btn{padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;text-align:center;border:1px solid var(--SmartThemeBorderColor);background:var(--SmartThemeBlurTintColor)}
+.stk-btn{padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;text-align:center;border:1px solid var(--SmartThemeBorderColor);background:var(--SmartThemeBlurTintColor);pointer-events:auto}
 .stk-btn:hover{background:var(--black30a)}
 .stk-sub-section{border:1px dashed var(--SmartThemeBorderColor);border-radius:6px;overflow:hidden;margin-top:2px}
-.stk-sub-header{padding:6px 10px;cursor:pointer;font-size:12px;font-weight:500;display:flex;align-items:center;gap:6px}
+.stk-sub-header{padding:6px 10px;cursor:pointer;font-size:12px;font-weight:500;display:flex;align-items:center;gap:6px;pointer-events:auto}
 .stk-sub-header:hover{background:var(--black30a)}
 .stk-sub-body{padding:6px 10px;display:flex;flex-direction:column;gap:5px;border-top:1px solid var(--SmartThemeBorderColor)}
 .stk-sub-body.stk-hidden{display:none}
@@ -51,7 +51,7 @@ const CSS = `
 .stk-po-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;font-weight:600;font-size:13px;border-bottom:1px solid var(--SmartThemeBorderColor);cursor:move;user-select:none}
 #stk-po-close{cursor:pointer;padding:4px;opacity:.7}
 #stk-po-close:hover{opacity:1}
-.stk-po-item{padding:10px 14px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--SmartThemeBorderColor);transition:background .15s}
+.stk-po-item{padding:10px 14px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--SmartThemeBorderColor);transition:background .15s;pointer-events:auto}
 .stk-po-item:hover{background:var(--black30a)}
 .stk-po-item:last-child{border-bottom:none}
 </style>`;
@@ -109,7 +109,7 @@ export const UI = {
             const ms = Core.getModuleSettings(m.id, m.defaultSettings);
             modulePanelsHtml += `
             <div class="stk-section" id="stk_module_${m.id}">
-                <div class="stk-section-header collapsed">
+                <div class="stk-section-header interactable collapsed" tabindex="0">
                     <span>${m.name} 设置</span>
                     <span class="stk-arrow fa-solid fa-chevron-down"></span>
                 </div>
@@ -130,14 +130,14 @@ export const UI = {
             <div id="stk-panel-body">
                 <!-- 共享API配置 + 模块总览 -->
                 <div class="stk-section">
-                    <div class="stk-section-header collapsed">
+                    <div class="stk-section-header interactable collapsed" tabindex="0">
                         <span>🔌 共享 API 配置</span>
                         <span class="stk-arrow fa-solid fa-chevron-down"></span>
                     </div>
                     <div class="stk-section-body stk-hidden">
                         <!-- 模块启用/更新方式 -->
                         <div class="stk-sub-section">
-                            <div class="stk-sub-header">
+                            <div class="stk-sub-header interactable" tabindex="0">
                                 <span class="stk-arrow fa-solid fa-chevron-down collapsed" style="font-size:10px"></span>
                                 📋 模块管理
                             </div>
@@ -147,7 +147,7 @@ export const UI = {
                         </div>
                         <!-- API设置 -->
                         <div class="stk-sub-section">
-                            <div class="stk-sub-header">
+                            <div class="stk-sub-header interactable" tabindex="0">
                                 <span class="stk-arrow fa-solid fa-chevron-down collapsed" style="font-size:10px"></span>
                                 🔗 API 连接
                             </div>
@@ -176,7 +176,7 @@ export const UI = {
 
                 <!-- 模板提示词 -->
                 <div class="stk-section">
-                    <div class="stk-section-header collapsed">
+                    <div class="stk-section-header interactable collapsed" tabindex="0">
                         <span>📝 模板提示词（世界书）</span>
                         <span class="stk-arrow fa-solid fa-chevron-down"></span>
                     </div>
@@ -186,13 +186,13 @@ export const UI = {
                             if (!m.templatePrompts) return '';
                             return Object.entries(m.templatePrompts).map(([key, def]) => `
                                 <div class="stk-sub-section">
-                                    <div class="stk-sub-header">
+                                    <div class="stk-sub-header interactable" tabindex="0">
                                         <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
                                         ${m.name} - ${key}
                                     </div>
                                     <div class="stk-sub-body stk-hidden">
                                         <textarea id="stk_prompt_${key}" class="text_pole" rows="8" style="font-family:monospace;font-size:11px;white-space:pre;resize:vertical">${_.escape(def)}</textarea>
-                                        <div class="stk-btn stk_prompt_save" data-key="${key}" style="align-self:flex-end">💾 保存到世界书</div>
+                                        <div class="stk-btn interactable stk_prompt_save" data-key="${key}" style="align-self:flex-end" tabindex="0">💾 保存到世界书</div>
                                     </div>
                                 </div>
                             `).join('');

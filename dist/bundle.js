@@ -240,7 +240,7 @@
 #stk-overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,.3);z-index:30999;display:none}
 #stk-overlay.open{display:block}
 .stk-section{border:1px solid var(--SmartThemeBorderColor);border-radius:8px;overflow:hidden}
-.stk-section-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;user-select:none;font-weight:600;font-size:13px;color:var(--SmartThemeBodyColor)}
+.stk-section-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;user-select:none;font-weight:600;font-size:13px;color:var(--SmartThemeBodyColor);pointer-events:auto}
 .stk-section-header:hover{background:var(--black30a)}
 .stk-section-header .stk-arrow{transition:transform .2s;font-size:11px}
 .stk-section-header.collapsed .stk-arrow{transform:rotate(-90deg)}
@@ -257,10 +257,10 @@
 .stk-toggle input[type=checkbox]{margin:0}
 .stk-module-header{display:flex;align-items:center;gap:8px;flex:1}
 .stk-module-controls{display:flex;align-items:center;gap:10px;font-size:12px}
-.stk-btn{padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;text-align:center;border:1px solid var(--SmartThemeBorderColor);background:var(--SmartThemeBlurTintColor)}
+.stk-btn{padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;text-align:center;border:1px solid var(--SmartThemeBorderColor);background:var(--SmartThemeBlurTintColor);pointer-events:auto}
 .stk-btn:hover{background:var(--black30a)}
 .stk-sub-section{border:1px dashed var(--SmartThemeBorderColor);border-radius:6px;overflow:hidden;margin-top:2px}
-.stk-sub-header{padding:6px 10px;cursor:pointer;font-size:12px;font-weight:500;display:flex;align-items:center;gap:6px}
+.stk-sub-header{padding:6px 10px;cursor:pointer;font-size:12px;font-weight:500;display:flex;align-items:center;gap:6px;pointer-events:auto}
 .stk-sub-header:hover{background:var(--black30a)}
 .stk-sub-body{padding:6px 10px;display:flex;flex-direction:column;gap:5px;border-top:1px solid var(--SmartThemeBorderColor)}
 .stk-sub-body.stk-hidden{display:none}
@@ -270,7 +270,7 @@
 .stk-po-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;font-weight:600;font-size:13px;border-bottom:1px solid var(--SmartThemeBorderColor);cursor:move;user-select:none}
 #stk-po-close{cursor:pointer;padding:4px;opacity:.7}
 #stk-po-close:hover{opacity:1}
-.stk-po-item{padding:10px 14px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--SmartThemeBorderColor);transition:background .15s}
+.stk-po-item{padding:10px 14px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--SmartThemeBorderColor);transition:background .15s;pointer-events:auto}
 .stk-po-item:hover{background:var(--black30a)}
 .stk-po-item:last-child{border-bottom:none}
 </style>`;
@@ -322,7 +322,7 @@
         const ms = Core.getModuleSettings(m.id, m.defaultSettings);
         modulePanelsHtml += `
             <div class="stk-section" id="stk_module_${m.id}">
-                <div class="stk-section-header collapsed">
+                <div class="stk-section-header interactable collapsed" tabindex="0">
                     <span>${m.name} \u8BBE\u7F6E</span>
                     <span class="stk-arrow fa-solid fa-chevron-down"></span>
                 </div>
@@ -341,14 +341,14 @@
             <div id="stk-panel-body">
                 <!-- \u5171\u4EABAPI\u914D\u7F6E + \u6A21\u5757\u603B\u89C8 -->
                 <div class="stk-section">
-                    <div class="stk-section-header collapsed">
+                    <div class="stk-section-header interactable collapsed" tabindex="0">
                         <span>\u{1F50C} \u5171\u4EAB API \u914D\u7F6E</span>
                         <span class="stk-arrow fa-solid fa-chevron-down"></span>
                     </div>
                     <div class="stk-section-body stk-hidden">
                         <!-- \u6A21\u5757\u542F\u7528/\u66F4\u65B0\u65B9\u5F0F -->
                         <div class="stk-sub-section">
-                            <div class="stk-sub-header">
+                            <div class="stk-sub-header interactable" tabindex="0">
                                 <span class="stk-arrow fa-solid fa-chevron-down collapsed" style="font-size:10px"></span>
                                 \u{1F4CB} \u6A21\u5757\u7BA1\u7406
                             </div>
@@ -358,7 +358,7 @@
                         </div>
                         <!-- API\u8BBE\u7F6E -->
                         <div class="stk-sub-section">
-                            <div class="stk-sub-header">
+                            <div class="stk-sub-header interactable" tabindex="0">
                                 <span class="stk-arrow fa-solid fa-chevron-down collapsed" style="font-size:10px"></span>
                                 \u{1F517} API \u8FDE\u63A5
                             </div>
@@ -387,7 +387,7 @@
 
                 <!-- \u6A21\u677F\u63D0\u793A\u8BCD -->
                 <div class="stk-section">
-                    <div class="stk-section-header collapsed">
+                    <div class="stk-section-header interactable collapsed" tabindex="0">
                         <span>\u{1F4DD} \u6A21\u677F\u63D0\u793A\u8BCD\uFF08\u4E16\u754C\u4E66\uFF09</span>
                         <span class="stk-arrow fa-solid fa-chevron-down"></span>
                     </div>
@@ -397,13 +397,13 @@
         if (!m.templatePrompts) return "";
         return Object.entries(m.templatePrompts).map(([key, def]) => `
                                 <div class="stk-sub-section">
-                                    <div class="stk-sub-header">
+                                    <div class="stk-sub-header interactable" tabindex="0">
                                         <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
                                         ${m.name} - ${key}
                                     </div>
                                     <div class="stk-sub-body stk-hidden">
                                         <textarea id="stk_prompt_${key}" class="text_pole" rows="8" style="font-family:monospace;font-size:11px;white-space:pre;resize:vertical">${_.escape(def)}</textarea>
-                                        <div class="stk-btn stk_prompt_save" data-key="${key}" style="align-self:flex-end">\u{1F4BE} \u4FDD\u5B58\u5230\u4E16\u754C\u4E66</div>
+                                        <div class="stk-btn interactable stk_prompt_save" data-key="${key}" style="align-self:flex-end" tabindex="0">\u{1F4BE} \u4FDD\u5B58\u5230\u4E16\u754C\u4E66</div>
                                     </div>
                                 </div>
                             `).join("");
@@ -671,7 +671,7 @@
       return `
             <!-- \u8BF7\u6C42\u8BBE\u7F6E -->
             <div class="stk-sub-section">
-                <div class="stk-sub-header">
+                <div class="stk-sub-header interactable" tabindex="0">
                     <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
                     \u2699\uFE0F \u8BF7\u6C42\u8BBE\u7F6E
                 </div>
@@ -688,7 +688,7 @@
             </div>
             <!-- \u5185\u5BB9\u5904\u7406 -->
             <div class="stk-sub-section">
-                <div class="stk-sub-header">
+                <div class="stk-sub-header interactable" tabindex="0">
                     <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
                     \u2702\uFE0F \u5185\u5BB9\u5904\u7406
                 </div>
@@ -699,7 +699,7 @@
             </div>
             <!-- \u64CD\u4F5C -->
             <div class="stk-sub-section">
-                <div class="stk-sub-header">
+                <div class="stk-sub-header interactable" tabindex="0">
                     <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
                     \u{1F527} \u64CD\u4F5C
                 </div>
@@ -926,7 +926,7 @@ Format:
     renderUI(s) {
       return `
             <div class="stk-sub-section">
-                <div class="stk-sub-header">
+                <div class="stk-sub-header interactable" tabindex="0">
                     <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
                     \u2699\uFE0F \u8BF7\u6C42\u8BBE\u7F6E
                 </div>
@@ -942,7 +942,7 @@ Format:
                 </div>
             </div>
             <div class="stk-sub-section">
-                <div class="stk-sub-header">
+                <div class="stk-sub-header interactable" tabindex="0">
                     <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
                     \u{1F527} \u64CD\u4F5C
                 </div>

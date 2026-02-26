@@ -203,7 +203,7 @@ export const StatusBarModule = {
         return `
             <!-- 请求设置 -->
             <div class="stk-sub-section">
-                <div class="stk-sub-header">
+                <div class="stk-sub-header interactable" tabindex="0">
                     <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
                     ⚙️ 请求设置
                 </div>
@@ -220,7 +220,7 @@ export const StatusBarModule = {
             </div>
             <!-- 内容处理 -->
             <div class="stk-sub-section">
-                <div class="stk-sub-header">
+                <div class="stk-sub-header interactable" tabindex="0">
                     <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
                     ✂️ 内容处理
                 </div>
@@ -231,7 +231,7 @@ export const StatusBarModule = {
             </div>
             <!-- 操作 -->
             <div class="stk-sub-section">
-                <div class="stk-sub-header">
+                <div class="stk-sub-header interactable" tabindex="0">
                     <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
                     🔧 操作
                 </div>

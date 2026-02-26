@@ -171,7 +171,7 @@ export const PlotOptionsModule = {
     renderUI(s) {
         return `
             <div class="stk-sub-section">
-                <div class="stk-sub-header">
+                <div class="stk-sub-header interactable" tabindex="0">
                     <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
                     \u2699\uFE0F 请求设置
                 </div>
@@ -187,7 +187,7 @@ export const PlotOptionsModule = {
                 </div>
             </div>
             <div class="stk-sub-section">
-                <div class="stk-sub-header">
+                <div class="stk-sub-header interactable" tabindex="0">
                     <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
                     \u{1F527} 操作
                 </div>
