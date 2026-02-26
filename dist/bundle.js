@@ -421,10 +421,12 @@
       };
       topBtn.on("click", togglePanel);
       $("#stk-panel-close, #stk-overlay").on("click", togglePanel);
-      $(document).on("click", ".stk-section-header", function() {
+      $("#stk-panel").on("click", ".stk-section-header", function(e) {
+        e.stopPropagation();
         $(this).toggleClass("collapsed").next(".stk-section-body").toggleClass("stk-hidden");
       });
-      $(document).on("click", ".stk-sub-header", function() {
+      $("#stk-panel").on("click", ".stk-sub-header", function(e) {
+        e.stopPropagation();
         $(this).find(".stk-arrow").toggleClass("collapsed");
         $(this).next(".stk-sub-body").toggleClass("stk-hidden");
       });
