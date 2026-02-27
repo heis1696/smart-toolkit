@@ -6,6 +6,54 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-02-27
+
+### Added
+
+#### API 预设管理 (Phase 5)
+- **ApiPresetManager** - 多 API 预设管理器
+  - 预设 CRUD 操作
+  - 模块-预设绑定
+  - 测试连接功能 (`testConnection`, `testConnectionFromConfig`)
+  - 获取模型列表 (`fetchModels`, `fetchModelsFromConfig`)
+  - 单例模式实现
+  - IndexedDB 持久化存储
+
+#### UI 组件升级
+- **SidebarWindow** - 可拖拽侧边栏主窗口
+  - 继承 DraggableWindow
+  - API 预设管理面板（创建/编辑/删除/测试/获取模型）
+  - 模块设置面板
+  - 破限提示词编辑（保存到世界书）
+  - 重置提示词到默认值
+- **OptionsBarWindow** - 快捷选项独立窗口
+  - 单例模式
+  - 模块启用/禁用快速开关
+  - 状态实时保存
+
+#### 核心功能增强
+- **Core.js** 新增工具内容提取方法
+  - `extractToolContent(message, toolType)` - 从消息提取指定类型工具内容
+  - `extractLastToolContent(beforeMsgId, toolType)` - 向前搜索最近工具内容
+- **statusbar.js** 输出包裹 `<auxiliary_tool type="statusbar">` 标签
+- **index.js** 初始化 ApiPresetManager
+
+### Changed
+- 移除 index.js 中的 auxiliary_tool 自动清理逻辑
+- 模块输出需自行包裹 `<auxiliary_tool type="模块类型">` 标签
+- `getLastStatus` 支持从 auxiliary_tool 标签提取内容
+- UI 结构重构：侧边栏迁移至 SidebarWindow 组件
+
+### Technical Details
+- 新增文件：
+  - `src/managers/ApiPresetManager.js`
+  - `src/components/SidebarWindow.js`
+  - `src/components/OptionsBarWindow.js`
+- 更新依赖关系：
+  - statusbar/plotOptions 新增 ApiPresetManager 依赖
+  - SidebarWindow 依赖 DraggableWindow、ApiPresetManager、Core
+  - OptionsBarWindow 依赖 DraggableWindow、Core
+
 ## [1.1.0] - 2026-02-27
 
 ### Added

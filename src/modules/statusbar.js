@@ -83,7 +83,12 @@ function getLastStatus(beforeId) {
         if (data) return data;
         const msg = chat[i];
         if (msg?.mes) {
-            data = parseBlock(msg.mes);
+            let content = Core.extractToolContent(msg.mes, 'statusbar');
+            if (content) {
+                data = parseBlock(content);
+            } else {
+                data = parseBlock(msg.mes);
+            }
             if (data) { setStatusData(i, data); return data; }
         }
     }
@@ -383,7 +388,7 @@ export const StatusBarModule = {
         if (result) {
             setStatusData(msgId, result);
             let text = (msg.mes || '').replace(STATUS_FULL_REGEX, '').replace(PLACEHOLDER, '').trimEnd();
-            text += '\n\n<StatusBlock>\n' + result.raw + '\n</StatusBlock>\n\n' + PLACEHOLDER;
+            text += '\n\n<auxiliary_tool type="statusbar">\n<StatusBlock>\n' + result.raw + '\n</StatusBlock>\n</auxiliary_tool>\n\n' + PLACEHOLDER;
             msg.mes = text;
             const ctx = SillyTavern.getContext();
             if (typeof ctx.setChatMessages === 'function') {

@@ -119,6 +119,27 @@ export const Core = {
         return result.trim();
     },
 
+    extractToolContent(message, toolType) {
+        if (!message) return null;
+        const auxRegex = /<auxiliary_tool[^>]*type="([^"]+)"[^>]*>([\s\S]*?)<\/auxiliary_tool>/gi;
+        let match;
+        while ((match = auxRegex.exec(message)) !== null) {
+            if (match[1] === toolType) {
+                return match[2].trim();
+            }
+        }
+        return null;
+    },
+
+    extractLastToolContent(beforeMsgId, toolType) {
+        const chat = this.getChat();
+        for (let i = beforeMsgId; i >= 0; i--) {
+            const content = this.extractToolContent(chat[i]?.mes, toolType);
+            if (content) return content;
+        }
+        return null;
+    },
+
     // ===== 额外模型请求 =====
     normalizeBaseURL(url) {
         url = (url || '').trim().replace(/\/+$/, '');
