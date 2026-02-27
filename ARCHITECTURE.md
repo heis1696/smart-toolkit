@@ -9,16 +9,29 @@
 
 ```
 smart-toolkit/
-├── package.json          # 项目配置 & 构建脚本
+├── package.json              # 项目配置 & 构建脚本
 ├── src/
-│   ├── index.js          # 入口：注册模块、绑定事件、初始化世界书、清理 auxiliary_tool 标签
-│   ├── core.js           # 核心层：设置管理、消息工具、API 请求、世界书管理
-│   ├── ui.js             # UI 层：顶栏按钮、侧滑面板、共享配置 + 模块管理
-│   └── modules/
-│       ├── statusbar.js  # 模块：状态栏生成器
-│       └── plotOptions.js # 模块：剧情推进选项（悬浮窗）
-└── dist/
-    └── bundle.js         # esbuild 构建产物 (IIFE)
+│   ├── index.js              # 入口：注册模块、绑定事件、初始化世界书、清理标签
+│   ├── core.js               # 核心层：设置管理、消息工具、API 请求、世界书管理
+│   ├── ui.js                 # UI 层：顶栏按钮、侧滑面板、共享配置 + 模块管理
+│   ├── managers/             # 管理器层：单例服务
+│   │   ├── index.js          # 导出 storage、templateManager
+│   │   ├── StorageManager.js # 双存储策略（extensionSettings + IndexedDB）
+│   │   └── TemplateManager.js# 模板 CRUD、导入导出、World Book 同步
+│   ├── components/           # 组件层：可复用 UI 组件
+│   │   ├── index.js          # 导出所有组件
+│   │   ├── WindowManager.js  # 窗口 z-index 控制、状态持久化
+│   │   ├── DraggableWindow.js# 可拖拽/缩放窗口组件
+│   │   ├── CollapsibleSection.js # 可折叠区块组件
+│   │   ├── DynamicList.js    # 动态增删列表组件
+│   │   └── ModalPopup.js     # 模态框/Toast/确认对话框
+│   └── modules/              # 功能模块
+│       ├── statusbar.js      # 模块：状态栏生成器
+│       └── plotOptions.js    # 模块：剧情推进选项
+├── dist/
+│   └── bundle.js             # esbuild 构建产物 (IIFE)
+├── ARCHITECTURE.md           # 本文档
+└── CHANGELOG.md              # 版本变更日志
 ```
 
 ## 构建
@@ -32,13 +45,27 @@ npm run watch   # 监听模式
 
 ## 核心架构
 
-### 三层设计
+### 五层设计
 
 ```
 index.js (入口/事件总线)
+    │
     ├── core.js (数据 & 逻辑 & 世界书)
-    └── ui.js   (顶栏面板 & 交互)
-            └── modules/* (功能模块)
+    │
+    ├── managers/ (管理器层 - 单例服务)
+    │   ├── StorageManager    → 双存储策略
+    │   └── TemplateManager   → 模板管理
+    │
+    ├── components/ (组件层 - 可复用 UI)
+    │   ├── WindowManager     → 窗口生命周期
+    │   ├── DraggableWindow   → 可拖拽窗口
+    │   ├── CollapsibleSection→ 折叠面板
+    │   ├── DynamicList       → 动态列表
+    │   └── ModalPopup        → 弹窗组件
+    │
+    └── modules/ (功能模块)
+        ├── statusbar.js
+        └── plotOptions.js
 ```
 
 ### 1. `index.js` — 入口
@@ -65,14 +92,157 @@ index.js (入口/事件总线)
 | **内容提取** | `extractContent(text, opts)` | 按标签提取 + 正则清理 |
 | **API 请求** | `requestExtraModel(opts)` | 支持三种请求模式的额外模型调用 |
 
-### 3. `ui.js` — UI 渲染
+### 3. `managers/` — 管理器层
 
-职责：
-- 在顶栏 `#top-settings-holder` 添加工具箱按钮
-- 点击后打开右侧滑出面板，包含：
-  - **共享 API 配置**：API 连接设置 + 模块管理（启用/更新方式）
-  - **模板提示词**：各模块提示词编辑，同步到世界书「工具书」
-  - **模块详细设置**：各模块独立设置面板，内部功能分类折叠
+#### StorageManager
+
+单例模式，提供双存储策略：
+
+```javascript
+import { storage } from './managers/StorageManager.js';
+
+// 存储层级：extensionSettings → IndexedDB → localStorage fallback
+await storage.set('key', value);
+const data = await storage.get('key');
+```
+
+| 方法 | 说明 |
+|------|------|
+| `getInstance()` | 获取单例实例 |
+| `get(key)` | 获取数据（自动降级） |
+| `set(key, value)` | 存储数据（双写） |
+| `delete(key)` | 删除数据 |
+| `clear()` | 清空所有数据 |
+
+#### TemplateManager
+
+单例模式，管理提示词模板：
+
+```javascript
+import { templateManager } from './managers/TemplateManager.js';
+
+// 创建模板
+templateManager.createTemplate({ name, data, metadata });
+
+// 获取活动模板
+const active = templateManager.getActiveTemplate();
+
+// 导出模板
+const json = templateManager.exportTemplate(id);
+```
+
+| 方法 | 说明 |
+|------|------|
+| `getInstance()` | 获取单例实例 |
+| `createTemplate(opts)` | 创建模板 |
+| `getTemplate(id)` | 获取模板 |
+| `updateTemplate(id, data)` | 更新模板 |
+| `deleteTemplate(id)` | 删除模板 |
+| `getAllTemplates()` | 获取所有模板 |
+| `setActiveTemplate(id)` | 设置活动模板 |
+| `getActiveTemplate()` | 获取活动模板 |
+| `exportTemplate(id)` | 导出为 JSON |
+| `importTemplate(json)` | 从 JSON 导入 |
+| `syncToWorldBook()` | 同步到世界书 |
+
+### 4. `components/` — 组件层
+
+#### WindowManager
+
+单例模式，管理窗口生命周期和 z-index：
+
+```javascript
+import { windowManager } from './components/index.js';
+
+// 注册窗口
+windowManager.register(id, windowInstance);
+
+// 置顶窗口
+windowManager.bringToFront(id);
+
+// 保存所有窗口状态
+windowManager.saveAllStates();
+```
+
+#### DraggableWindow
+
+可拖拽、可缩放的独立窗口组件：
+
+```javascript
+import { DraggableWindow } from './components/index.js';
+
+const win = new DraggableWindow({
+    id: 'my-window',
+    title: '窗口标题',
+    content: '<div>内容</div>',
+    width: 400,
+    height: 'auto',      // 或具体数值
+    anchor: 'center',    // center | top-left | top-right | bottom-left | bottom-right
+    offset: { x: 0, y: 0 },
+    persistState: true,  // 状态持久化
+    showClose: true,
+    showMinimize: false,
+    className: 'custom-class',
+    onClose: () => {}
+});
+
+win.show();
+win.close();
+win.bringToFront();
+```
+
+#### CollapsibleSection
+
+可折叠的内容区块：
+
+```javascript
+import { CollapsibleSection } from './components/index.js';
+
+const section = new CollapsibleSection({
+    title: '标题',
+    content: '<div>内容</div>',
+    collapsed: false,
+    onToggle: (isCollapsed) => {}
+});
+```
+
+#### DynamicList
+
+动态增删的列表组件：
+
+```javascript
+import { DynamicList } from './components/index.js';
+
+const list = new DynamicList({
+    items: ['item1', 'item2'],
+    renderItem: (item, index) => `<span>${item}</span>`,
+    onAdd: () => {},
+    onRemove: (index) => {},
+    sortable: true
+});
+```
+
+#### ModalPopup
+
+模态框、Toast、确认对话框：
+
+```javascript
+import { ModalPopup, Toast, ConfirmDialog } from './components/index.js';
+
+// 模态框
+const modal = new ModalPopup({ title: '标题', content: '内容' });
+modal.show();
+
+// Toast 提示
+Toast.show('操作成功', 'success');
+
+// 确认对话框
+const result = await ConfirmDialog.show('确定删除？');
+```
+
+### 5. `modules/` — 功能模块
+
+职责：实现具体功能，使用管理器和组件构建 UI。
 
 ---
 
@@ -88,6 +258,11 @@ index.js (入口/事件总线)
       │   └── 各模块提示词编辑 textarea + 保存按钮
       └── 📊 各模块设置
           └── 分类折叠的子面板（请求设置/内容处理/操作）
+
+独立窗口（通过 DraggableWindow）
+  ├── 🎭 剧情推进窗口
+  ├── 📊 状态栏设置窗口
+  └── 🧪 提取测试预览窗口
 ```
 
 ---
@@ -108,7 +283,7 @@ index.js (入口/事件总线)
 
 ## 模块规范
 
-```js
+```javascript
 export const MyModule = {
     id: 'my_module',
     name: '📦 模块名称',
@@ -117,11 +292,65 @@ export const MyModule = {
     // 模板提示词（可选，会同步到世界书）
     templatePrompts: { my_prompt_key: '默认提示词内容' },
 
-    init() {},
+    // 初始化（可选）
+    init() {
+        // 初始化默认模板
+        this._initDefaultTemplate();
+    },
+
+    // 消息处理（可选）
     async onMessage(msgId) {},
+
+    // 聊天就绪（可选）
     onChatReady(data) {},
-    renderUI(settings) { return html; },  // 返回模块详细设置 HTML（使用 stk-sub-section 分类折叠）
+
+    // 渲染侧边栏设置 UI
+    renderUI(settings) { return html; },
+
+    // 绑定侧边栏 UI 事件
     bindUI(settings, save) {},
+
+    // 打开独立设置窗口（可选）
+    openSettings() {},
+
+    // 关闭所有窗口（可选）
+    closeAllWindows() {},
+};
+```
+
+**集成模板管理器的模块示例：**
+
+```javascript
+import { templateManager } from '../managers/TemplateManager.js';
+import { DraggableWindow } from '../components/index.js';
+
+export const MyModule = {
+    init() {
+        this._initDefaultTemplate();
+    },
+
+    _initDefaultTemplate() {
+        const templates = templateManager.getAllTemplates();
+        const hasDefault = templates.some(t => 
+            t.metadata.isDefault && t.metadata.module === this.id
+        );
+        if (!hasDefault) {
+            templateManager.createTemplate({
+                id: `default-${this.id}`,
+                name: '默认模板',
+                data: { prompt: DEFAULT_PROMPT },
+                metadata: { isDefault: true, module: this.id }
+            });
+        }
+    },
+
+    async _getPrompt() {
+        const active = templateManager.getActiveTemplate();
+        if (active?.metadata.module === this.id && active.data.prompt) {
+            return active.data.prompt;
+        }
+        return DEFAULT_PROMPT;
+    }
 };
 ```
 
@@ -135,14 +364,86 @@ export const MyModule = {
 
 ## 设置存储结构
 
+### 双存储策略
+
+插件采用双存储策略确保数据可靠性：
+
 ```
-extensionSettings['smart-toolkit'] = {
-    _shared: { use_preset, api_url, api_key, model_name, max_tokens, temperature, stream },
-    statusbar: { enabled, update_mode, auto_request, retry_count, request_mode, ... },
-    plot_options: { enabled, update_mode, auto_request, retry_count, request_mode, ... },
+┌─────────────────────────────────────────────────────────────┐
+│                      StorageManager                          │
+├─────────────────────────────────────────────────────────────┤
+│  Level 1: extensionSettings (SillyTavern 原生)               │
+│           - 配置数据、启用状态、API 设置                       │
+│           - 自动随 SillyTavern 备份                          │
+├─────────────────────────────────────────────────────────────┤
+│  Level 2: IndexedDB (大容量存储)                             │
+│           - 模板数据、窗口状态                                │
+│           - 支持大量数据                                      │
+│           - localStorage fallback                            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 数据结构
+
+```javascript
+// extensionSettings['smart-toolkit']
+{
+    _shared: {
+        use_preset, api_url, api_key,
+        model_name, max_tokens, temperature, stream
+    },
+    statusbar: {
+        enabled, update_mode, auto_request,
+        retry_count, request_mode, content_tag,
+        cleanup_patterns, notification
+    },
+    plot_options: {
+        enabled, update_mode, auto_request,
+        retry_count, request_mode, ...
+    }
+}
+
+// IndexedDB 'smart-toolkit-templates'
+{
+    templates: Map<id, {
+        id, name, description,
+        createdAt, updatedAt,
+        data: { prompt, ... },
+        metadata: { isDefault, module, ... }
+    }>,
+    activeTemplate: templateId | null
+}
+
+// IndexedDB 'smart-toolkit-window-states'
+{
+    windowId: { x, y, width, height, zIndex }
 }
 ```
 
 ---
 
-*文档最后更新：2026-02-26*
+## 组件依赖关系
+
+```
+modules/
+├── statusbar.js ──────┬── StorageManager
+│                      ├── TemplateManager
+│                      ├── DraggableWindow
+│                      └── WindowManager
+│
+└── plotOptions.js ────┼── StorageManager
+                       ├── TemplateManager
+                       ├── DraggableWindow
+                       └── WindowManager
+
+components/
+├── DraggableWindow.js ─── WindowManager
+├── DynamicList.js ─────── (standalone)
+├── CollapsibleSection.js─ (standalone)
+├── ModalPopup.js ──────── (standalone)
+└── WindowManager.js ───── StorageManager
+```
+
+---
+
+*文档最后更新：2026-02-27*
