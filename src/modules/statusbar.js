@@ -1,6 +1,8 @@
-// @ts-nocheck
 import { Core } from '../core.js';
 import { UI } from '../ui.js';
+import { storage } from '../managers/StorageManager.js';
+import { templateManager } from '../managers/TemplateManager.js';
+import { DraggableWindow, windowManager } from '../components/index.js';
 
 const STATUS_REGEX = /<StatusBlock>([\s\S]*?)<\/StatusBlock>/i;
 const STATUS_FULL_REGEX = /<StatusBlock>[\s\S]*?<\/StatusBlock>/i;
@@ -45,6 +47,10 @@ const DEFAULT_SYSTEM_PROMPT = `你是状态栏生成器。根据正文和上轮�
 
 const SECTIONS = ['environment', 'charInspect', 'vital', 'equipment'];
 
+let _settingsWindow = null;
+let _previewWindow = null;
+let _processing = false;
+
 function parseBlock(text) {
     const match = text.match(STATUS_REGEX);
     if (!match) return null;
@@ -84,11 +90,178 @@ function getLastStatus(beforeId) {
     return null;
 }
 
-let _processing = false;
+function showSettingsWindow(settings, save) {
+    if (_settingsWindow) {
+        _settingsWindow.bringToFront();
+        return;
+    }
+
+    const content = `
+        <div class="stk-settings-content">
+            <div class="stk-section">
+                <div class="stk-section-title">\u2699\uFE0F 请求设置</div>
+                <div class="stk-toggle">
+                    <input type="checkbox" id="sb_auto_new" ${settings.auto_request ? 'checked' : ''} />
+                    <span>自动请求</span>
+                </div>
+                <div class="stk-row">
+                    <label>请求方式
+                        <select id="sb_reqmode_new" class="text_pole">
+                            <option value="sequential"${settings.request_mode === 'sequential' ? ' selected' : ''}>依次重试</option>
+                            <option value="parallel"${settings.request_mode === 'parallel' ? ' selected' : ''}>同时请求</option>
+                            <option value="hybrid"${settings.request_mode === 'hybrid' ? ' selected' : ''}>先一次后并行</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="stk-row">
+                    <label>重试次数
+                        <input type="number" id="sb_retries_new" class="text_pole" value="${settings.retry_count}" min="1" max="10" />
+                    </label>
+                </div>
+                <div class="stk-toggle">
+                    <input type="checkbox" id="sb_notification_new" ${settings.notification ? 'checked' : ''} />
+                    <span>显示通知</span>
+                </div>
+            </div>
+            <div class="stk-section">
+                <div class="stk-section-title">\u2702\uFE0F 内容处理</div>
+                <div class="stk-row">
+                    <label>正文标签名 <span>(空=不提取)</span>
+                        <input type="text" id="sb_tag_new" class="text_pole" value="${settings.content_tag || ''}" />
+                    </label>
+                </div>
+                <div class="stk-row">
+                    <label>清理正则 <span>(每行一个)</span>
+                        <textarea id="sb_cleanup_new" class="text_pole" rows="4">${(settings.cleanup_patterns || []).join('\n')}</textarea>
+                    </label>
+                </div>
+            </div>
+            <div class="stk-section">
+                <div class="stk-section-title">\u{1F527} 操作</div>
+                <div class="stk-btn stk-sb-retry-btn" style="text-align:center">\u{1F504} 手动生成/重试</div>
+                <div class="stk-btn stk-sb-test-btn" style="text-align:center;margin-top:8px">\u{1F9EA} 测试提取</div>
+            </div>
+            <div class="stk-section">
+                <div class="stk-section-title">\u{1F4CB} 模板管理</div>
+                <div class="stk-row">
+                    <select id="sb_template_select" class="text_pole" style="width:100%">
+                        <option value="">-- 选择模板 --</option>
+                    </select>
+                </div>
+                <div class="stk-row stk-template-actions">
+                    <button class="stk-btn stk-sb-save-template" style="flex:1">保存为模板</button>
+                    <button class="stk-btn stk-sb-export-template" style="flex:1">导出</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    _settingsWindow = new DraggableWindow({
+        id: 'stk-statusbar-settings',
+        title: '\u{1F4CA} 状态栏设置',
+        content: content,
+        width: 400,
+        height: 'auto',
+        anchor: 'top-right',
+        offset: { x: 20, y: 150 },
+        persistState: true,
+        showClose: true,
+        showMinimize: false,
+        className: 'stk-settings-window',
+        onClose: () => {
+            _settingsWindow = null;
+        }
+    });
+
+    _settingsWindow.show();
+
+    const templates = templateManager.getAllTemplates().filter(t => t.metadata.module === 'statusbar');
+    const $select = _settingsWindow.$body.find('#sb_template_select');
+    templates.forEach(t => {
+        $select.append(`<option value="${t.id}">${t.name}</option>`);
+    });
+
+    const activeTemplate = templateManager.getActiveTemplate();
+    if (activeTemplate && activeTemplate.metadata.module === 'statusbar') {
+        $select.val(activeTemplate.id);
+    }
+
+    _settingsWindow.$body.find('#sb_auto_new').on('change', function() {
+        settings.auto_request = this.checked;
+        save();
+    });
+
+    _settingsWindow.$body.find('#sb_reqmode_new').on('change', function() {
+        settings.request_mode = this.value;
+        save();
+    });
+
+    _settingsWindow.$body.find('#sb_retries_new').on('input', function() {
+        settings.retry_count = Number(this.value);
+        save();
+    });
+
+    _settingsWindow.$body.find('#sb_notification_new').on('change', function() {
+        settings.notification = this.checked;
+        save();
+    });
+
+    _settingsWindow.$body.find('#sb_tag_new').on('input', function() {
+        settings.content_tag = this.value.trim();
+        save();
+    });
+
+    _settingsWindow.$body.find('#sb_cleanup_new').on('input', function() {
+        settings.cleanup_patterns = this.value.split('\n').map(l => l.trim()).filter(Boolean);
+        save();
+    });
+
+    const self = StatusBarModule;
+    _settingsWindow.$body.find('.stk-sb-retry-btn').on('click', async () => {
+        const lastId = Core.getLastMessageId();
+        if (lastId < 0) {
+            toastr.warning('没有消息', '[StatusBar]');
+            return;
+        }
+        await self._runExtra(lastId, settings);
+    });
+
+    _settingsWindow.$body.find('.stk-sb-test-btn').on('click', () => {
+        self._showTestResult(settings);
+    });
+
+    _settingsWindow.$body.find('#sb_template_select').on('change', function() {
+        const templateId = this.value;
+        if (templateId) {
+            templateManager.setActiveTemplate(templateId);
+        }
+    });
+
+    _settingsWindow.$body.find('.stk-sb-save-template').on('click', () => {
+        self._saveCurrentPromptAsTemplate();
+    });
+
+    _settingsWindow.$body.find('.stk-sb-export-template').on('click', () => {
+        const active = templateManager.getActiveTemplate();
+        if (active && active.metadata.module === 'statusbar') {
+            const json = templateManager.exportTemplate(active.id);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${active.name}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            toastr.success('模板已导出', '[StatusBar]');
+        } else {
+            toastr.warning('没有活动模板', '[StatusBar]');
+        }
+    });
+}
 
 export const StatusBarModule = {
     id: 'statusbar',
-    name: '📊 状态栏',
+    name: '\u{1F4CA} 状态栏',
     defaultSettings: {
         enabled: true,
         update_mode: 'extra_model',
@@ -106,12 +279,32 @@ export const StatusBarModule = {
         notification: true,
     },
 
-    // 模板提示词（会同步到世界书）
     templatePrompts: {
         statusbar_system_prompt: DEFAULT_SYSTEM_PROMPT,
     },
 
-    init() {},
+    init() {
+        this._initDefaultTemplate();
+    },
+
+    _initDefaultTemplate() {
+        const templates = templateManager.getAllTemplates();
+        const hasDefault = templates.some(t => t.metadata.isDefault && t.metadata.module === 'statusbar');
+        if (!hasDefault) {
+            templateManager.createTemplate({
+                id: 'default-statusbar',
+                name: '默认状态栏',
+                description: '默认的状态栏提示词模板',
+                data: {
+                    prompt: DEFAULT_SYSTEM_PROMPT
+                },
+                metadata: {
+                    isDefault: true,
+                    module: 'statusbar'
+                }
+            });
+        }
+    },
 
     async onMessage(messageId) {
         const s = Core.getModuleSettings(this.id, this.defaultSettings);
@@ -148,6 +341,11 @@ export const StatusBarModule = {
     },
 
     async _getSystemPrompt() {
+        const activeTemplate = templateManager.getActiveTemplate();
+        if (activeTemplate && activeTemplate.metadata.module === 'statusbar' && activeTemplate.data.prompt) {
+            return activeTemplate.data.prompt;
+        }
+
         const wb = await Core.getWorldBookEntry('statusbar_system_prompt');
         return wb || DEFAULT_SYSTEM_PROMPT;
     },
@@ -199,13 +397,84 @@ export const StatusBarModule = {
         }
     },
 
+    async _saveCurrentPromptAsTemplate() {
+        const currentPrompt = await this._getSystemPrompt();
+        const name = prompt('输入模板名称:', `状态栏模板 ${Date.now()}`);
+        if (!name) return;
+
+        templateManager.createTemplate({
+            name,
+            description: '用户创建的状态栏模板',
+            data: {
+                prompt: currentPrompt
+            },
+            metadata: {
+                module: 'statusbar'
+            }
+        });
+
+        toastr.success('模板已保存', '[StatusBar]');
+
+        if (_settingsWindow) {
+            const $select = _settingsWindow.$body.find('#sb_template_select');
+            $select.empty().append('<option value="">-- 选择模板 --</option>');
+            templateManager.getAllTemplates().filter(t => t.metadata.module === 'statusbar').forEach(t => {
+                $select.append(`<option value="${t.id}">${t.name}</option>`);
+            });
+        }
+    },
+
+    _showTestResult(settings) {
+        const chat = Core.getChat();
+        const last = chat[chat.length - 1];
+        if (!last) { toastr.warning('没有消息', '[StatusBar]'); return; }
+        const original = last.mes || '';
+        const extracted = Core.extractContent(original, { contentTag: settings.content_tag, cleanupPatterns: settings.cleanup_patterns });
+        const prev = getLastStatus(chat.length - 2);
+        const prevText = prev ? prev.raw.substring(0, 200) + '...' : '(无)';
+        const ratio = Math.round((1 - extracted.length / Math.max(original.length, 1)) * 100);
+
+        if (_previewWindow) {
+            _previewWindow.close();
+            _previewWindow = null;
+        }
+
+        const previewContent = `
+            <div class="stk-preview-content" style="font-family:monospace;white-space:pre-wrap;">
+                <h4>\u{1F4C4} 原文 (${original.length} 字符)</h4>
+                <div style="background:rgba(0,0,0,0.2);padding:8px;border-radius:6px;max-height:20vh;overflow:auto;">${_.escape(original.substring(0, 500))}${original.length > 500 ? '\n...(截断)' : ''}</div>
+                <h4>\u2702\uFE0F 提取后 (${extracted.length} 字符, 节省 ${ratio}%)</h4>
+                <div style="background:rgba(0,100,0,0.2);padding:8px;border-radius:6px;max-height:20vh;overflow:auto;">${_.escape(extracted.substring(0, 500))}${extracted.length > 500 ? '\n...(截断)' : ''}</div>
+                <h4>\u{1F4CA} 上轮状态栏</h4>
+                <div style="background:rgba(0,0,100,0.2);padding:8px;border-radius:6px;max-height:10vh;overflow:auto;">${_.escape(prevText)}</div>
+            </div>
+        `;
+
+        _previewWindow = new DraggableWindow({
+            id: 'stk-statusbar-preview',
+            title: '\u{1F9EA} 提取测试结果',
+            content: previewContent,
+            width: 500,
+            height: 'auto',
+            anchor: 'center',
+            persistState: false,
+            showClose: true,
+            showMinimize: false,
+            className: 'stk-preview-window',
+            onClose: () => {
+                _previewWindow = null;
+            }
+        });
+
+        _previewWindow.show();
+    },
+
     renderUI(s) {
         return `
-            <!-- 请求设置 -->
             <div class="stk-sub-section">
                 <div class="stk-sub-header interactable" tabindex="0">
                     <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
-                    ⚙️ 请求设置
+                    \u2699\uFE0F 请求设置
                 </div>
                 <div class="stk-sub-body">
                     <div class="stk-toggle"><input type="checkbox" id="sb_auto" ${s.auto_request ? 'checked' : ''} /><span>自动请求</span></div>
@@ -218,26 +487,25 @@ export const StatusBarModule = {
                     <div class="stk-toggle"><input type="checkbox" id="sb_notification" ${s.notification ? 'checked' : ''} /><span>显示通知</span></div>
                 </div>
             </div>
-            <!-- 内容处理 -->
             <div class="stk-sub-section">
                 <div class="stk-sub-header interactable" tabindex="0">
                     <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
-                    ✂️ 内容处理
+                    \u2702\uFE0F 内容处理
                 </div>
                 <div class="stk-sub-body">
                     <div class="stk-row"><label>正文标签名 <span>(空=不提取)</span><input type="text" id="sb_tag" class="text_pole" value="${s.content_tag || ''}" /></label></div>
                     <div class="stk-row"><label>清理正则 <span>(每行一个)</span><textarea id="sb_cleanup" class="text_pole" rows="4">${(s.cleanup_patterns || []).join('\n')}</textarea></label></div>
                 </div>
             </div>
-            <!-- 操作 -->
             <div class="stk-sub-section">
                 <div class="stk-sub-header interactable" tabindex="0">
                     <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
-                    🔧 操作
+                    \u{1F527} 操作
                 </div>
                 <div class="stk-sub-body">
-                    <div class="stk-btn" id="sb_retry_btn" style="text-align:center">🔄 手动生成/重试</div>
-                    <div class="stk-btn" id="sb_test_btn" style="text-align:center">🧪 测试提取</div>
+                    <div class="stk-btn" id="sb_retry_btn" style="text-align:center">\u{1F504} 手动生成/重试</div>
+                    <div class="stk-btn" id="sb_test_btn" style="text-align:center;margin-top:8px">\u{1F9EA} 测试提取</div>
+                    <div class="stk-btn" id="sb_settings_btn" style="text-align:center;margin-top:8px">\u{1F4CB} 打开设置窗口</div>
                 </div>
             </div>`;
     },
@@ -258,32 +526,29 @@ export const StatusBarModule = {
         });
 
         $('#sb_test_btn').on('click', () => {
-            const chat = Core.getChat();
-            const last = chat[chat.length - 1];
-            if (!last) { toastr.warning('没有消息', '[StatusBar]'); return; }
-            const original = last.mes || '';
-            const extracted = Core.extractContent(original, { contentTag: s.content_tag, cleanupPatterns: s.cleanup_patterns });
-            const prev = getLastStatus(chat.length - 2);
-            const prevText = prev ? prev.raw.substring(0, 200) + '...' : '(无)';
-            const ratio = Math.round((1 - extracted.length / Math.max(original.length, 1)) * 100);
+            self._showTestResult(s);
+        });
 
-            const popupHtml = `<div style="font-family:monospace;white-space:pre-wrap;max-height:60vh;overflow:auto;">
-                <h4>📄 原文 (${original.length} 字符)</h4>
-                <div style="background:rgba(0,0,0,0.2);padding:8px;border-radius:6px;max-height:20vh;overflow:auto;">${_.escape(original.substring(0, 500))}${original.length > 500 ? '\n...(截断)' : ''}</div>
-                <h4>✂️ 提取后 (${extracted.length} 字符, 节省 ${ratio}%)</h4>
-                <div style="background:rgba(0,100,0,0.2);padding:8px;border-radius:6px;max-height:20vh;overflow:auto;">${_.escape(extracted.substring(0, 500))}${extracted.length > 500 ? '\n...(截断)' : ''}</div>
-                <h4>📊 上轮状态栏</h4>
-                <div style="background:rgba(0,0,100,0.2);padding:8px;border-radius:6px;max-height:10vh;overflow:auto;">${_.escape(prevText)}</div>
-            </div>`;
-
-            const ctx = SillyTavern.getContext();
-            if (typeof ctx.callPopup === 'function') {
-                ctx.callPopup(popupHtml, 'text', '', { wide: true });
-            } else if (typeof SillyTavern.callGenericPopup === 'function') {
-                SillyTavern.callGenericPopup(popupHtml, 1, '', { wide: true, allowVerticalScrolling: true });
-            } else {
-                alert('提取后 (' + extracted.length + ' 字符):\n' + extracted.substring(0, 300));
-            }
+        $('#sb_settings_btn').on('click', () => {
+            showSettingsWindow(s, save);
         });
     },
+
+    openSettings() {
+        const s = Core.getModuleSettings(this.id, this.defaultSettings);
+        showSettingsWindow(s, () => {
+            Core.saveModuleSettings(this.id, s);
+        });
+    },
+
+    closeAllWindows() {
+        if (_settingsWindow) {
+            _settingsWindow.close();
+            _settingsWindow = null;
+        }
+        if (_previewWindow) {
+            _previewWindow.close();
+            _previewWindow = null;
+        }
+    }
 };

@@ -1,4 +1,8 @@
 (() => {
+  var __defProp = Object.defineProperty;
+  var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+  var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+
   // src/core.js
   var PLUGIN_NAME = "smart-toolkit";
   var WORLD_BOOK = "\u5DE5\u5177\u4E66";
@@ -486,6 +490,777 @@
     }
   };
 
+  // src/managers/StorageManager.js
+  var PLUGIN_NAME2 = "smart-toolkit";
+  var DB_NAME = "smart-toolkit-cache";
+  var DB_VERSION = 1;
+  var STORE_NAME = "config";
+  var _StorageManager = class _StorageManager {
+    constructor() {
+      __publicField(this, "_db", null);
+      __publicField(this, "_cache", /* @__PURE__ */ new Map());
+      __publicField(this, "_initialized", false);
+      __publicField(this, "_initPromise", null);
+    }
+    static getInstance() {
+      if (!_StorageManager._instance) {
+        _StorageManager._instance = new _StorageManager();
+      }
+      return _StorageManager._instance;
+    }
+    async init() {
+      if (this._initialized) return;
+      if (this._initPromise) return this._initPromise;
+      this._initPromise = this._doInit();
+      await this._initPromise;
+      this._initPromise = null;
+    }
+    async _doInit() {
+      const cachedData = await this._loadFromIndexedDB();
+      if (cachedData) {
+        for (const [key, value] of Object.entries(cachedData)) {
+          this._cache.set(key, value);
+        }
+      }
+      this._initialized = true;
+    }
+    async _loadFromIndexedDB() {
+      return new Promise((resolve) => {
+        if (!window.indexedDB) {
+          resolve(null);
+          return;
+        }
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onerror = () => resolve(null);
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains(STORE_NAME)) {
+            db.createObjectStore(STORE_NAME, { keyPath: "key" });
+          }
+        };
+        request.onsuccess = (event) => {
+          this._db = event.target.result;
+          const transaction = this._db.transaction(STORE_NAME, "readonly");
+          const store = transaction.objectStore(STORE_NAME);
+          const getAllRequest = store.getAll();
+          getAllRequest.onsuccess = () => {
+            const result = {};
+            for (const item of getAllRequest.result) {
+              result[item.key] = item.value;
+            }
+            resolve(result);
+          };
+          getAllRequest.onerror = () => resolve(null);
+        };
+      });
+    }
+    _getTavernSettings() {
+      try {
+        const ctx = SillyTavern?.getContext?.();
+        if (ctx?.extensionSettings?.[PLUGIN_NAME2]) {
+          return ctx.extensionSettings[PLUGIN_NAME2];
+        }
+      } catch {
+      }
+      return null;
+    }
+    _persistTavernSettings() {
+      try {
+        const ctx = SillyTavern?.getContext?.();
+        if (ctx?.saveSettingsDebounced) {
+          ctx.saveSettingsDebounced();
+        }
+      } catch {
+      }
+    }
+    get(key) {
+      const tavernSettings = this._getTavernSettings();
+      if (tavernSettings && Object.prototype.hasOwnProperty.call(tavernSettings, key)) {
+        return tavernSettings[key];
+      }
+      if (this._cache.has(key)) {
+        return this._cache.get(key);
+      }
+      return null;
+    }
+    set(key, value) {
+      const strValue = typeof value === "string" ? value : JSON.stringify(value);
+      const tavernSettings = this._getTavernSettings();
+      if (tavernSettings !== null) {
+        tavernSettings[key] = strValue;
+        this._persistTavernSettings();
+      }
+      this._cache.set(key, strValue);
+      this._saveToIndexedDB(key, strValue);
+    }
+    _saveToIndexedDB(key, value) {
+      if (!this._db) return;
+      try {
+        const transaction = this._db.transaction(STORE_NAME, "readwrite");
+        const store = transaction.objectStore(STORE_NAME);
+        store.put({ key, value });
+      } catch {
+      }
+    }
+    getObject(key) {
+      const value = this.get(key);
+      if (value === null) return null;
+      try {
+        return JSON.parse(value);
+      } catch {
+        return null;
+      }
+    }
+    setObject(key, value) {
+      this.set(key, JSON.stringify(value));
+    }
+    delete(key) {
+      const tavernSettings = this._getTavernSettings();
+      if (tavernSettings && Object.prototype.hasOwnProperty.call(tavernSettings, key)) {
+        delete tavernSettings[key];
+        this._persistTavernSettings();
+      }
+      this._cache.delete(key);
+      if (this._db) {
+        try {
+          const transaction = this._db.transaction(STORE_NAME, "readwrite");
+          const store = transaction.objectStore(STORE_NAME);
+          store.delete(key);
+        } catch {
+        }
+      }
+    }
+    getModuleSettings(moduleId, defaults) {
+      const settings = this.getObject(moduleId) || {};
+      const result = { ...defaults };
+      for (const [key, defaultValue] of Object.entries(defaults)) {
+        if (settings[key] !== void 0) {
+          result[key] = settings[key];
+        } else {
+          result[key] = JSON.parse(JSON.stringify(defaultValue));
+        }
+      }
+      return result;
+    }
+    saveModuleSettings(moduleId, settings) {
+      this.setObject(moduleId, settings);
+    }
+    getSettings() {
+      return this._getTavernSettings() || {};
+    }
+    saveSettings() {
+      this._persistTavernSettings();
+    }
+  };
+  __publicField(_StorageManager, "_instance", null);
+  var StorageManager = _StorageManager;
+  var storage = StorageManager.getInstance();
+
+  // src/managers/TemplateManager.js
+  var TEMPLATES_KEY = "stk-templates";
+  var ACTIVE_TEMPLATE_KEY = "stk-active-template";
+  var _TemplateManager = class _TemplateManager {
+    constructor() {
+      __publicField(this, "templates", /* @__PURE__ */ new Map());
+      __publicField(this, "activeTemplateId", null);
+      __publicField(this, "onTemplateChange", null);
+      this._loadTemplates();
+    }
+    static getInstance() {
+      if (!_TemplateManager._instance) {
+        _TemplateManager._instance = new _TemplateManager();
+      }
+      return _TemplateManager._instance;
+    }
+    _loadTemplates() {
+      const templatesData = storage.getObject(TEMPLATES_KEY) || {};
+      const activeId = storage.get(ACTIVE_TEMPLATE_KEY);
+      for (const [id, template] of Object.entries(templatesData)) {
+        this.templates.set(id, template);
+      }
+      if (activeId && this.templates.has(activeId)) {
+        this.activeTemplateId = activeId;
+      } else if (this.templates.size > 0) {
+        this.activeTemplateId = this.templates.keys().next().value;
+      }
+    }
+    _saveTemplates() {
+      const templatesData = {};
+      this.templates.forEach((template, id) => {
+        templatesData[id] = template;
+      });
+      storage.setObject(TEMPLATES_KEY, templatesData);
+      if (this.activeTemplateId) {
+        storage.set(ACTIVE_TEMPLATE_KEY, this.activeTemplateId);
+      }
+    }
+    createTemplate(options) {
+      const id = options.id || `template-${Date.now()}`;
+      const template = {
+        id,
+        name: options.name || "\u672A\u547D\u540D\u6A21\u677F",
+        description: options.description || "",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        data: options.data || {},
+        metadata: options.metadata || {}
+      };
+      this.templates.set(id, template);
+      this._saveTemplates();
+      return template;
+    }
+    getTemplate(id) {
+      return this.templates.get(id);
+    }
+    getActiveTemplate() {
+      if (!this.activeTemplateId) return null;
+      return this.templates.get(this.activeTemplateId);
+    }
+    setActiveTemplate(id) {
+      if (!this.templates.has(id)) {
+        console.warn(`TemplateManager: Template ${id} not found`);
+        return false;
+      }
+      this.activeTemplateId = id;
+      this._saveTemplates();
+      if (this.onTemplateChange) {
+        this.onTemplateChange(this.getTemplate(id));
+      }
+      return true;
+    }
+    updateTemplate(id, updates) {
+      const template = this.templates.get(id);
+      if (!template) return false;
+      const updatedTemplate = {
+        ...template,
+        ...updates,
+        id: template.id,
+        createdAt: template.createdAt,
+        updatedAt: Date.now()
+      };
+      this.templates.set(id, updatedTemplate);
+      this._saveTemplates();
+      if (this.activeTemplateId === id && this.onTemplateChange) {
+        this.onTemplateChange(updatedTemplate);
+      }
+      return true;
+    }
+    updateTemplateData(id, data) {
+      return this.updateTemplate(id, { data });
+    }
+    deleteTemplate(id) {
+      if (!this.templates.has(id)) return false;
+      this.templates.delete(id);
+      this._saveTemplates();
+      if (this.activeTemplateId === id) {
+        this.activeTemplateId = this.templates.size > 0 ? this.templates.keys().next().value : null;
+        if (this.onTemplateChange) {
+          this.onTemplateChange(this.getActiveTemplate());
+        }
+      }
+      return true;
+    }
+    duplicateTemplate(id, newName) {
+      const template = this.templates.get(id);
+      if (!template) return null;
+      return this.createTemplate({
+        name: newName || `${template.name} (\u526F\u672C)`,
+        description: template.description,
+        data: JSON.parse(JSON.stringify(template.data)),
+        metadata: JSON.parse(JSON.stringify(template.metadata))
+      });
+    }
+    getAllTemplates() {
+      const result = [];
+      this.templates.forEach((template) => {
+        result.push(template);
+      });
+      return result.sort((a, b) => b.updatedAt - a.updatedAt);
+    }
+    exportTemplate(id) {
+      const template = this.templates.get(id);
+      if (!template) return null;
+      return JSON.stringify({
+        version: "1.0",
+        exportedAt: Date.now(),
+        template: {
+          name: template.name,
+          description: template.description,
+          data: template.data,
+          metadata: template.metadata
+        }
+      }, null, 2);
+    }
+    importTemplate(jsonString) {
+      try {
+        const imported = JSON.parse(jsonString);
+        if (!imported.template || !imported.template.data) {
+          throw new Error("Invalid template format");
+        }
+        return this.createTemplate({
+          name: imported.template.name || "\u5BFC\u5165\u7684\u6A21\u677F",
+          description: imported.template.description || "",
+          data: imported.template.data,
+          metadata: imported.template.metadata || {}
+        });
+      } catch (error) {
+        console.error("TemplateManager: Import failed", error);
+        return null;
+      }
+    }
+    exportAllTemplates() {
+      const exportData = {
+        version: "1.0",
+        exportedAt: Date.now(),
+        templates: []
+      };
+      this.templates.forEach((template) => {
+        exportData.templates.push({
+          id: template.id,
+          name: template.name,
+          description: template.description,
+          data: template.data,
+          metadata: template.metadata
+        });
+      });
+      return JSON.stringify(exportData, null, 2);
+    }
+    importAllTemplates(jsonString, merge = true) {
+      try {
+        const imported = JSON.parse(jsonString);
+        if (!imported.templates || !Array.isArray(imported.templates)) {
+          throw new Error("Invalid templates format");
+        }
+        if (!merge) {
+          this.templates.clear();
+        }
+        let importedCount = 0;
+        for (const templateData of imported.templates) {
+          if (templateData.data) {
+            this.createTemplate({
+              id: merge ? void 0 : templateData.id,
+              name: templateData.name,
+              description: templateData.description,
+              data: templateData.data,
+              metadata: templateData.metadata
+            });
+            importedCount++;
+          }
+        }
+        this._saveTemplates();
+        return importedCount;
+      } catch (error) {
+        console.error("TemplateManager: Import all failed", error);
+        return 0;
+      }
+    }
+    async syncToWorldBook(templateId, worldBookData) {
+      const template = this.templates.get(templateId);
+      if (!template) return false;
+      template.data = {
+        ...template.data,
+        worldBook: worldBookData
+      };
+      template.updatedAt = Date.now();
+      this._saveTemplates();
+      return true;
+    }
+    getTemplateCount() {
+      return this.templates.size;
+    }
+    searchTemplates(query) {
+      const lowerQuery = query.toLowerCase();
+      const results = [];
+      this.templates.forEach((template) => {
+        if (template.name.toLowerCase().includes(lowerQuery) || template.description.toLowerCase().includes(lowerQuery)) {
+          results.push(template);
+        }
+      });
+      return results.sort((a, b) => b.updatedAt - a.updatedAt);
+    }
+  };
+  __publicField(_TemplateManager, "_instance", null);
+  var TemplateManager = _TemplateManager;
+  var templateManager = TemplateManager.getInstance();
+
+  // src/components/WindowManager.js
+  var WINDOW_STATE_KEY = "stk-window-states";
+  var _WindowManager = class _WindowManager {
+    constructor() {
+      __publicField(this, "windows", /* @__PURE__ */ new Map());
+      __publicField(this, "topZIndex", 1e3);
+      __publicField(this, "activeWindowId", null);
+      this._loadStates();
+    }
+    static getInstance() {
+      if (!_WindowManager._instance) {
+        _WindowManager._instance = new _WindowManager();
+      }
+      return _WindowManager._instance;
+    }
+    _loadStates() {
+      const states = storage.getObject(WINDOW_STATE_KEY) || {};
+      if (states.topZIndex) {
+        this.topZIndex = states.topZIndex;
+      }
+    }
+    _saveStates() {
+      const states = {
+        topZIndex: this.topZIndex,
+        windows: {}
+      };
+      this.windows.forEach((win, id) => {
+        if (win.persistState) {
+          states.windows[id] = {
+            position: win.position,
+            size: win.size,
+            collapsed: win.collapsed
+          };
+        }
+      });
+      storage.setObject(WINDOW_STATE_KEY, states);
+    }
+    register(windowInstance) {
+      const id = windowInstance.id;
+      if (this.windows.has(id)) {
+        console.warn(`WindowManager: Window ${id} already registered`);
+        return;
+      }
+      this.windows.set(id, windowInstance);
+      const savedState = this._getSavedWindowState(id);
+      if (savedState && windowInstance.persistState) {
+        windowInstance.restoreState(savedState);
+      }
+      this._bindWindowEvents(windowInstance);
+    }
+    _getSavedWindowState(id) {
+      const states = storage.getObject(WINDOW_STATE_KEY) || {};
+      return states.windows ? states.windows[id] : null;
+    }
+    _bindWindowEvents(windowInstance) {
+      const originalOnFocus = windowInstance.onFocus;
+      windowInstance.onFocus = () => {
+        this.bringToFront(windowInstance.id);
+        if (originalOnFocus) originalOnFocus.call(windowInstance);
+      };
+      const originalOnClose = windowInstance.onClose;
+      windowInstance.onClose = () => {
+        this.unregister(windowInstance.id);
+        if (originalOnClose) originalOnClose.call(windowInstance);
+      };
+    }
+    unregister(id) {
+      if (this.windows.has(id)) {
+        const win = this.windows.get(id);
+        if (win.persistState) {
+          this._saveStates();
+        }
+        this.windows.delete(id);
+        if (this.activeWindowId === id) {
+          this.activeWindowId = null;
+        }
+      }
+    }
+    bringToFront(id) {
+      const win = this.windows.get(id);
+      if (!win) return;
+      this.topZIndex++;
+      win.setZIndex(this.topZIndex);
+      this.activeWindowId = id;
+      this.windows.forEach((w, wid) => {
+        if (wid !== id && w.$el) {
+          w.$el.removeClass("stk-window-active");
+        }
+      });
+      if (win.$el) {
+        win.$el.addClass("stk-window-active");
+      }
+    }
+    getWindow(id) {
+      return this.windows.get(id);
+    }
+    hideAll() {
+      this.windows.forEach((win) => {
+        if (win.hide) {
+          win.hide();
+        }
+      });
+    }
+    showAll() {
+      this.windows.forEach((win) => {
+        if (win.show) {
+          win.show();
+        }
+      });
+    }
+    closeAll() {
+      const windowsToClose = Array.from(this.windows.values());
+      windowsToClose.forEach((win) => {
+        if (win.close) {
+          win.close();
+        }
+      });
+    }
+    getActiveWindow() {
+      return this.activeWindowId ? this.windows.get(this.activeWindowId) : null;
+    }
+    saveAllStates() {
+      this._saveStates();
+    }
+  };
+  __publicField(_WindowManager, "_instance", null);
+  var WindowManager = _WindowManager;
+  var windowManager = WindowManager.getInstance();
+
+  // src/components/DraggableWindow.js
+  var DraggableWindow = class {
+    constructor(options) {
+      this.id = options.id || `stk-window-${Date.now()}`;
+      this.title = options.title || "";
+      this.content = options.content || "";
+      this.width = options.width || 340;
+      this.height = options.height || "auto";
+      this.minWidth = options.minWidth || 200;
+      this.minHeight = options.minHeight || 100;
+      this.position = options.position || { x: null, y: null };
+      this.anchor = options.anchor || "bottom-right";
+      this.offset = options.offset || { x: 20, y: 20 };
+      this.resizable = options.resizable !== false;
+      this.draggable = options.draggable !== false;
+      this.showClose = options.showClose !== false;
+      this.showMinimize = options.showMinimize || false;
+      this.persistState = options.persistState !== false;
+      this.onShow = options.onShow || null;
+      this.onHide = options.onHide || null;
+      this.onClose = options.onClose || null;
+      this.onFocus = options.onFocus || null;
+      this.onResize = options.onResize || null;
+      this.className = options.className || "";
+      this.$el = null;
+      this.$header = null;
+      this.$body = null;
+      this.isVisible = false;
+      this.collapsed = false;
+      this.size = { width: this.width, height: this.height };
+      this._dragOffset = { x: 0, y: 0 };
+      this._isDragging = false;
+      this._isResizing = false;
+    }
+    render() {
+      const positionStyle = this._calculatePosition();
+      const sizeStyle = `width: ${this.size.width}px;`;
+      const heightStyle = this.size.height !== "auto" ? `height: ${this.size.height}px;` : "";
+      const resizeClass = this.resizable ? "stk-window-resizable" : "";
+      const customClass = this.className ? ` ${this.className}` : "";
+      const minimizeBtnHtml = this.showMinimize ? '<button class="stk-window-btn stk-window-minimize interactable" tabindex="0"><span class="fa-solid fa-minus"></span></button>' : "";
+      const closeBtnHtml = this.showClose ? '<button class="stk-window-btn stk-window-close interactable" tabindex="0"><span class="fa-solid fa-xmark"></span></button>' : "";
+      return `
+            <div class="stk-window ${resizeClass}${customClass}" id="${this.id}" style="${positionStyle}${sizeStyle}${heightStyle}">
+                <div class="stk-window-header interactable">
+                    <span class="stk-window-title">${this.title}</span>
+                    <div class="stk-window-buttons">
+                        ${minimizeBtnHtml}
+                        ${closeBtnHtml}
+                    </div>
+                </div>
+                <div class="stk-window-body">
+                    ${typeof this.content === "string" ? this.content : ""}
+                </div>
+                ${this.resizable ? '<div class="stk-window-resize-handle"></div>' : ""}
+            </div>
+        `;
+    }
+    _calculatePosition() {
+      if (this.position.x !== null && this.position.y !== null) {
+        return `left: ${this.position.x}px; top: ${this.position.y}px;`;
+      }
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const width = this.size.width;
+      const height = typeof this.size.height === "number" ? this.size.height : 300;
+      let x, y;
+      switch (this.anchor) {
+        case "top-left":
+          x = this.offset.x;
+          y = this.offset.y;
+          break;
+        case "top-right":
+          x = viewportWidth - width - this.offset.x;
+          y = this.offset.y;
+          break;
+        case "bottom-left":
+          x = this.offset.x;
+          y = viewportHeight - height - this.offset.y;
+          break;
+        case "bottom-right":
+        default:
+          x = viewportWidth - width - this.offset.x;
+          y = viewportHeight - height - this.offset.y;
+          break;
+        case "center":
+          x = (viewportWidth - width) / 2;
+          y = (viewportHeight - height) / 2;
+          break;
+      }
+      this.position = { x: Math.max(0, x), y: Math.max(0, y) };
+      return `left: ${this.position.x}px; top: ${this.position.y}px;`;
+    }
+    show(parentSelector = "body") {
+      if (this.$el) {
+        this.$el.removeClass("stk-window-hidden");
+        this.isVisible = true;
+        windowManager.bringToFront(this.id);
+        if (this.onShow) this.onShow();
+        return;
+      }
+      const html = this.render();
+      $(parentSelector).append(html);
+      this.$el = $(`#${this.id}`);
+      this.$header = this.$el.find(".stk-window-header");
+      this.$body = this.$el.find(".stk-window-body");
+      this._bindEvents();
+      windowManager.register(this);
+      windowManager.bringToFront(this.id);
+      this.isVisible = true;
+      if (this.onShow) {
+        this.onShow();
+      }
+    }
+    _bindEvents() {
+      this.$header.on("mousedown", (e) => {
+        if ($(e.target).closest(".stk-window-buttons").length) return;
+        if (!this.draggable) return;
+        this._isDragging = true;
+        this._dragOffset = {
+          x: e.clientX - this.position.x,
+          y: e.clientY - this.position.y
+        };
+        this.$el.addClass("stk-window-dragging");
+        $(document).on("mousemove.stk-window", (e2) => {
+          if (!this._isDragging) return;
+          this.position.x = e2.clientX - this._dragOffset.x;
+          this.position.y = e2.clientY - this._dragOffset.y;
+          this.position.x = Math.max(0, Math.min(this.position.x, window.innerWidth - this.$el.outerWidth()));
+          this.position.y = Math.max(0, Math.min(this.position.y, window.innerHeight - this.$el.outerHeight()));
+          this.$el.css({
+            left: this.position.x,
+            top: this.position.y
+          });
+        });
+        $(document).on("mouseup.stk-window", () => {
+          this._isDragging = false;
+          this.$el.removeClass("stk-window-dragging");
+          $(document).off("mousemove.stk-window mouseup.stk-window");
+          windowManager.saveAllStates();
+        });
+      });
+      this.$header.on("click", () => {
+        windowManager.bringToFront(this.id);
+        if (this.onFocus) this.onFocus();
+      });
+      this.$el.find(".stk-window-close").on("click", () => {
+        this.close();
+      });
+      this.$el.find(".stk-window-minimize").on("click", () => {
+        this.toggleCollapse();
+      });
+      if (this.resizable) {
+        const $handle = this.$el.find(".stk-window-resize-handle");
+        $handle.on("mousedown", (e) => {
+          e.preventDefault();
+          this._isResizing = true;
+          const startX = e.clientX;
+          const startY = e.clientY;
+          const startWidth = this.$el.outerWidth();
+          const startHeight = this.$el.outerHeight();
+          $(document).on("mousemove.stk-resize", (e2) => {
+            if (!this._isResizing) return;
+            const newWidth = Math.max(this.minWidth, startWidth + (e2.clientX - startX));
+            const newHeight = Math.max(this.minHeight, startHeight + (e2.clientY - startY));
+            this.size.width = newWidth;
+            this.size.height = newHeight;
+            this.$el.css({
+              width: newWidth,
+              height: newHeight
+            });
+          });
+          $(document).on("mouseup.stk-resize", () => {
+            this._isResizing = false;
+            $(document).off("mousemove.stk-resize mouseup.stk-resize");
+            windowManager.saveAllStates();
+            if (this.onResize) this.onResize(this.size);
+          });
+        });
+      }
+    }
+    hide() {
+      if (this.$el) {
+        this.$el.addClass("stk-window-hidden");
+        this.isVisible = false;
+        if (this.onHide) {
+          this.onHide();
+        }
+      }
+    }
+    close() {
+      if (this.onClose) {
+        this.onClose();
+      }
+      if (this.$el) {
+        this.$el.remove();
+        this.$el = null;
+        this.$header = null;
+        this.$body = null;
+        this.isVisible = false;
+      }
+      windowManager.unregister(this.id);
+    }
+    toggleCollapse() {
+      this.collapsed = !this.collapsed;
+      if (this.$el) {
+        this.$el.toggleClass("stk-window-collapsed", this.collapsed);
+      }
+    }
+    setContent(content) {
+      this.content = content;
+      if (this.$body) {
+        this.$body.html(typeof content === "string" ? content : "");
+      }
+    }
+    setTitle(title) {
+      this.title = title;
+      if (this.$header) {
+        this.$header.find(".stk-window-title").text(title);
+      }
+    }
+    setZIndex(zIndex) {
+      if (this.$el) {
+        this.$el.css("z-index", zIndex);
+      }
+    }
+    restoreState(state) {
+      if (state.position) {
+        this.position = state.position;
+      }
+      if (state.size) {
+        this.size = state.size;
+      }
+      if (state.collapsed !== void 0) {
+        this.collapsed = state.collapsed;
+      }
+    }
+    getState() {
+      return {
+        position: { ...this.position },
+        size: { ...this.size },
+        collapsed: this.collapsed
+      };
+    }
+    destroy() {
+      this.close();
+    }
+  };
+
   // src/modules/statusbar.js
   var STATUS_REGEX = /<StatusBlock>([\s\S]*?)<\/StatusBlock>/i;
   var STATUS_FULL_REGEX = /<StatusBlock>[\s\S]*?<\/StatusBlock>/i;
@@ -527,6 +1302,9 @@
 </equipment>
 </StatusBlock>`;
   var SECTIONS = ["environment", "charInspect", "vital", "equipment"];
+  var _settingsWindow = null;
+  var _previewWindow = null;
+  var _processing = false;
   function parseBlock(text) {
     const match = text.match(STATUS_REGEX);
     if (!match) return null;
@@ -565,7 +1343,158 @@
     }
     return null;
   }
-  var _processing = false;
+  function showSettingsWindow(settings, save) {
+    if (_settingsWindow) {
+      _settingsWindow.bringToFront();
+      return;
+    }
+    const content = `
+        <div class="stk-settings-content">
+            <div class="stk-section">
+                <div class="stk-section-title">\u2699\uFE0F \u8BF7\u6C42\u8BBE\u7F6E</div>
+                <div class="stk-toggle">
+                    <input type="checkbox" id="sb_auto_new" ${settings.auto_request ? "checked" : ""} />
+                    <span>\u81EA\u52A8\u8BF7\u6C42</span>
+                </div>
+                <div class="stk-row">
+                    <label>\u8BF7\u6C42\u65B9\u5F0F
+                        <select id="sb_reqmode_new" class="text_pole">
+                            <option value="sequential"${settings.request_mode === "sequential" ? " selected" : ""}>\u4F9D\u6B21\u91CD\u8BD5</option>
+                            <option value="parallel"${settings.request_mode === "parallel" ? " selected" : ""}>\u540C\u65F6\u8BF7\u6C42</option>
+                            <option value="hybrid"${settings.request_mode === "hybrid" ? " selected" : ""}>\u5148\u4E00\u6B21\u540E\u5E76\u884C</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="stk-row">
+                    <label>\u91CD\u8BD5\u6B21\u6570
+                        <input type="number" id="sb_retries_new" class="text_pole" value="${settings.retry_count}" min="1" max="10" />
+                    </label>
+                </div>
+                <div class="stk-toggle">
+                    <input type="checkbox" id="sb_notification_new" ${settings.notification ? "checked" : ""} />
+                    <span>\u663E\u793A\u901A\u77E5</span>
+                </div>
+            </div>
+            <div class="stk-section">
+                <div class="stk-section-title">\u2702\uFE0F \u5185\u5BB9\u5904\u7406</div>
+                <div class="stk-row">
+                    <label>\u6B63\u6587\u6807\u7B7E\u540D <span>(\u7A7A=\u4E0D\u63D0\u53D6)</span>
+                        <input type="text" id="sb_tag_new" class="text_pole" value="${settings.content_tag || ""}" />
+                    </label>
+                </div>
+                <div class="stk-row">
+                    <label>\u6E05\u7406\u6B63\u5219 <span>(\u6BCF\u884C\u4E00\u4E2A)</span>
+                        <textarea id="sb_cleanup_new" class="text_pole" rows="4">${(settings.cleanup_patterns || []).join("\n")}</textarea>
+                    </label>
+                </div>
+            </div>
+            <div class="stk-section">
+                <div class="stk-section-title">\u{1F527} \u64CD\u4F5C</div>
+                <div class="stk-btn stk-sb-retry-btn" style="text-align:center">\u{1F504} \u624B\u52A8\u751F\u6210/\u91CD\u8BD5</div>
+                <div class="stk-btn stk-sb-test-btn" style="text-align:center;margin-top:8px">\u{1F9EA} \u6D4B\u8BD5\u63D0\u53D6</div>
+            </div>
+            <div class="stk-section">
+                <div class="stk-section-title">\u{1F4CB} \u6A21\u677F\u7BA1\u7406</div>
+                <div class="stk-row">
+                    <select id="sb_template_select" class="text_pole" style="width:100%">
+                        <option value="">-- \u9009\u62E9\u6A21\u677F --</option>
+                    </select>
+                </div>
+                <div class="stk-row stk-template-actions">
+                    <button class="stk-btn stk-sb-save-template" style="flex:1">\u4FDD\u5B58\u4E3A\u6A21\u677F</button>
+                    <button class="stk-btn stk-sb-export-template" style="flex:1">\u5BFC\u51FA</button>
+                </div>
+            </div>
+        </div>
+    `;
+    _settingsWindow = new DraggableWindow({
+      id: "stk-statusbar-settings",
+      title: "\u{1F4CA} \u72B6\u6001\u680F\u8BBE\u7F6E",
+      content,
+      width: 400,
+      height: "auto",
+      anchor: "top-right",
+      offset: { x: 20, y: 150 },
+      persistState: true,
+      showClose: true,
+      showMinimize: false,
+      className: "stk-settings-window",
+      onClose: () => {
+        _settingsWindow = null;
+      }
+    });
+    _settingsWindow.show();
+    const templates = templateManager.getAllTemplates().filter((t) => t.metadata.module === "statusbar");
+    const $select = _settingsWindow.$body.find("#sb_template_select");
+    templates.forEach((t) => {
+      $select.append(`<option value="${t.id}">${t.name}</option>`);
+    });
+    const activeTemplate = templateManager.getActiveTemplate();
+    if (activeTemplate && activeTemplate.metadata.module === "statusbar") {
+      $select.val(activeTemplate.id);
+    }
+    _settingsWindow.$body.find("#sb_auto_new").on("change", function() {
+      settings.auto_request = this.checked;
+      save();
+    });
+    _settingsWindow.$body.find("#sb_reqmode_new").on("change", function() {
+      settings.request_mode = this.value;
+      save();
+    });
+    _settingsWindow.$body.find("#sb_retries_new").on("input", function() {
+      settings.retry_count = Number(this.value);
+      save();
+    });
+    _settingsWindow.$body.find("#sb_notification_new").on("change", function() {
+      settings.notification = this.checked;
+      save();
+    });
+    _settingsWindow.$body.find("#sb_tag_new").on("input", function() {
+      settings.content_tag = this.value.trim();
+      save();
+    });
+    _settingsWindow.$body.find("#sb_cleanup_new").on("input", function() {
+      settings.cleanup_patterns = this.value.split("\n").map((l) => l.trim()).filter(Boolean);
+      save();
+    });
+    const self = StatusBarModule;
+    _settingsWindow.$body.find(".stk-sb-retry-btn").on("click", async () => {
+      const lastId = Core.getLastMessageId();
+      if (lastId < 0) {
+        toastr.warning("\u6CA1\u6709\u6D88\u606F", "[StatusBar]");
+        return;
+      }
+      await self._runExtra(lastId, settings);
+    });
+    _settingsWindow.$body.find(".stk-sb-test-btn").on("click", () => {
+      self._showTestResult(settings);
+    });
+    _settingsWindow.$body.find("#sb_template_select").on("change", function() {
+      const templateId = this.value;
+      if (templateId) {
+        templateManager.setActiveTemplate(templateId);
+      }
+    });
+    _settingsWindow.$body.find(".stk-sb-save-template").on("click", () => {
+      self._saveCurrentPromptAsTemplate();
+    });
+    _settingsWindow.$body.find(".stk-sb-export-template").on("click", () => {
+      const active = templateManager.getActiveTemplate();
+      if (active && active.metadata.module === "statusbar") {
+        const json = templateManager.exportTemplate(active.id);
+        const blob = new Blob([json], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${active.name}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toastr.success("\u6A21\u677F\u5DF2\u5BFC\u51FA", "[StatusBar]");
+      } else {
+        toastr.warning("\u6CA1\u6709\u6D3B\u52A8\u6A21\u677F", "[StatusBar]");
+      }
+    });
+  }
   var StatusBarModule = {
     id: "statusbar",
     name: "\u{1F4CA} \u72B6\u6001\u680F",
@@ -585,11 +1514,29 @@
       ],
       notification: true
     },
-    // 模板提示词（会同步到世界书）
     templatePrompts: {
       statusbar_system_prompt: DEFAULT_SYSTEM_PROMPT
     },
     init() {
+      this._initDefaultTemplate();
+    },
+    _initDefaultTemplate() {
+      const templates = templateManager.getAllTemplates();
+      const hasDefault = templates.some((t) => t.metadata.isDefault && t.metadata.module === "statusbar");
+      if (!hasDefault) {
+        templateManager.createTemplate({
+          id: "default-statusbar",
+          name: "\u9ED8\u8BA4\u72B6\u6001\u680F",
+          description: "\u9ED8\u8BA4\u7684\u72B6\u6001\u680F\u63D0\u793A\u8BCD\u6A21\u677F",
+          data: {
+            prompt: DEFAULT_SYSTEM_PROMPT
+          },
+          metadata: {
+            isDefault: true,
+            module: "statusbar"
+          }
+        });
+      }
     },
     async onMessage(messageId) {
       const s = Core.getModuleSettings(this.id, this.defaultSettings);
@@ -624,6 +1571,10 @@
       return true;
     },
     async _getSystemPrompt() {
+      const activeTemplate = templateManager.getActiveTemplate();
+      if (activeTemplate && activeTemplate.metadata.module === "statusbar" && activeTemplate.data.prompt) {
+        return activeTemplate.data.prompt;
+      }
       const wb = await Core.getWorldBookEntry("statusbar_system_prompt");
       return wb || DEFAULT_SYSTEM_PROMPT;
     },
@@ -667,9 +1618,74 @@
         if (settings.notification) toastr.error("\u72B6\u6001\u680F\u751F\u6210\u5931\u8D25", "[StatusBar]");
       }
     },
+    async _saveCurrentPromptAsTemplate() {
+      const currentPrompt = await this._getSystemPrompt();
+      const name = prompt("\u8F93\u5165\u6A21\u677F\u540D\u79F0:", `\u72B6\u6001\u680F\u6A21\u677F ${Date.now()}`);
+      if (!name) return;
+      templateManager.createTemplate({
+        name,
+        description: "\u7528\u6237\u521B\u5EFA\u7684\u72B6\u6001\u680F\u6A21\u677F",
+        data: {
+          prompt: currentPrompt
+        },
+        metadata: {
+          module: "statusbar"
+        }
+      });
+      toastr.success("\u6A21\u677F\u5DF2\u4FDD\u5B58", "[StatusBar]");
+      if (_settingsWindow) {
+        const $select = _settingsWindow.$body.find("#sb_template_select");
+        $select.empty().append('<option value="">-- \u9009\u62E9\u6A21\u677F --</option>');
+        templateManager.getAllTemplates().filter((t) => t.metadata.module === "statusbar").forEach((t) => {
+          $select.append(`<option value="${t.id}">${t.name}</option>`);
+        });
+      }
+    },
+    _showTestResult(settings) {
+      const chat = Core.getChat();
+      const last = chat[chat.length - 1];
+      if (!last) {
+        toastr.warning("\u6CA1\u6709\u6D88\u606F", "[StatusBar]");
+        return;
+      }
+      const original = last.mes || "";
+      const extracted = Core.extractContent(original, { contentTag: settings.content_tag, cleanupPatterns: settings.cleanup_patterns });
+      const prev = getLastStatus(chat.length - 2);
+      const prevText = prev ? prev.raw.substring(0, 200) + "..." : "(\u65E0)";
+      const ratio = Math.round((1 - extracted.length / Math.max(original.length, 1)) * 100);
+      if (_previewWindow) {
+        _previewWindow.close();
+        _previewWindow = null;
+      }
+      const previewContent = `
+            <div class="stk-preview-content" style="font-family:monospace;white-space:pre-wrap;">
+                <h4>\u{1F4C4} \u539F\u6587 (${original.length} \u5B57\u7B26)</h4>
+                <div style="background:rgba(0,0,0,0.2);padding:8px;border-radius:6px;max-height:20vh;overflow:auto;">${_.escape(original.substring(0, 500))}${original.length > 500 ? "\n...(\u622A\u65AD)" : ""}</div>
+                <h4>\u2702\uFE0F \u63D0\u53D6\u540E (${extracted.length} \u5B57\u7B26, \u8282\u7701 ${ratio}%)</h4>
+                <div style="background:rgba(0,100,0,0.2);padding:8px;border-radius:6px;max-height:20vh;overflow:auto;">${_.escape(extracted.substring(0, 500))}${extracted.length > 500 ? "\n...(\u622A\u65AD)" : ""}</div>
+                <h4>\u{1F4CA} \u4E0A\u8F6E\u72B6\u6001\u680F</h4>
+                <div style="background:rgba(0,0,100,0.2);padding:8px;border-radius:6px;max-height:10vh;overflow:auto;">${_.escape(prevText)}</div>
+            </div>
+        `;
+      _previewWindow = new DraggableWindow({
+        id: "stk-statusbar-preview",
+        title: "\u{1F9EA} \u63D0\u53D6\u6D4B\u8BD5\u7ED3\u679C",
+        content: previewContent,
+        width: 500,
+        height: "auto",
+        anchor: "center",
+        persistState: false,
+        showClose: true,
+        showMinimize: false,
+        className: "stk-preview-window",
+        onClose: () => {
+          _previewWindow = null;
+        }
+      });
+      _previewWindow.show();
+    },
     renderUI(s) {
       return `
-            <!-- \u8BF7\u6C42\u8BBE\u7F6E -->
             <div class="stk-sub-section">
                 <div class="stk-sub-header interactable" tabindex="0">
                     <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
@@ -686,7 +1702,6 @@
                     <div class="stk-toggle"><input type="checkbox" id="sb_notification" ${s.notification ? "checked" : ""} /><span>\u663E\u793A\u901A\u77E5</span></div>
                 </div>
             </div>
-            <!-- \u5185\u5BB9\u5904\u7406 -->
             <div class="stk-sub-section">
                 <div class="stk-sub-header interactable" tabindex="0">
                     <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
@@ -697,7 +1712,6 @@
                     <div class="stk-row"><label>\u6E05\u7406\u6B63\u5219 <span>(\u6BCF\u884C\u4E00\u4E2A)</span><textarea id="sb_cleanup" class="text_pole" rows="4">${(s.cleanup_patterns || []).join("\n")}</textarea></label></div>
                 </div>
             </div>
-            <!-- \u64CD\u4F5C -->
             <div class="stk-sub-section">
                 <div class="stk-sub-header interactable" tabindex="0">
                     <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
@@ -705,7 +1719,8 @@
                 </div>
                 <div class="stk-sub-body">
                     <div class="stk-btn" id="sb_retry_btn" style="text-align:center">\u{1F504} \u624B\u52A8\u751F\u6210/\u91CD\u8BD5</div>
-                    <div class="stk-btn" id="sb_test_btn" style="text-align:center">\u{1F9EA} \u6D4B\u8BD5\u63D0\u53D6</div>
+                    <div class="stk-btn" id="sb_test_btn" style="text-align:center;margin-top:8px">\u{1F9EA} \u6D4B\u8BD5\u63D0\u53D6</div>
+                    <div class="stk-btn" id="sb_settings_btn" style="text-align:center;margin-top:8px">\u{1F4CB} \u6253\u5F00\u8BBE\u7F6E\u7A97\u53E3</div>
                 </div>
             </div>`;
     },
@@ -744,34 +1759,27 @@
         await self._runExtra(lastId, s);
       });
       $("#sb_test_btn").on("click", () => {
-        const chat = Core.getChat();
-        const last = chat[chat.length - 1];
-        if (!last) {
-          toastr.warning("\u6CA1\u6709\u6D88\u606F", "[StatusBar]");
-          return;
-        }
-        const original = last.mes || "";
-        const extracted = Core.extractContent(original, { contentTag: s.content_tag, cleanupPatterns: s.cleanup_patterns });
-        const prev = getLastStatus(chat.length - 2);
-        const prevText = prev ? prev.raw.substring(0, 200) + "..." : "(\u65E0)";
-        const ratio = Math.round((1 - extracted.length / Math.max(original.length, 1)) * 100);
-        const popupHtml = `<div style="font-family:monospace;white-space:pre-wrap;max-height:60vh;overflow:auto;">
-                <h4>\u{1F4C4} \u539F\u6587 (${original.length} \u5B57\u7B26)</h4>
-                <div style="background:rgba(0,0,0,0.2);padding:8px;border-radius:6px;max-height:20vh;overflow:auto;">${_.escape(original.substring(0, 500))}${original.length > 500 ? "\n...(\u622A\u65AD)" : ""}</div>
-                <h4>\u2702\uFE0F \u63D0\u53D6\u540E (${extracted.length} \u5B57\u7B26, \u8282\u7701 ${ratio}%)</h4>
-                <div style="background:rgba(0,100,0,0.2);padding:8px;border-radius:6px;max-height:20vh;overflow:auto;">${_.escape(extracted.substring(0, 500))}${extracted.length > 500 ? "\n...(\u622A\u65AD)" : ""}</div>
-                <h4>\u{1F4CA} \u4E0A\u8F6E\u72B6\u6001\u680F</h4>
-                <div style="background:rgba(0,0,100,0.2);padding:8px;border-radius:6px;max-height:10vh;overflow:auto;">${_.escape(prevText)}</div>
-            </div>`;
-        const ctx = SillyTavern.getContext();
-        if (typeof ctx.callPopup === "function") {
-          ctx.callPopup(popupHtml, "text", "", { wide: true });
-        } else if (typeof SillyTavern.callGenericPopup === "function") {
-          SillyTavern.callGenericPopup(popupHtml, 1, "", { wide: true, allowVerticalScrolling: true });
-        } else {
-          alert("\u63D0\u53D6\u540E (" + extracted.length + " \u5B57\u7B26):\n" + extracted.substring(0, 300));
-        }
+        self._showTestResult(s);
       });
+      $("#sb_settings_btn").on("click", () => {
+        showSettingsWindow(s, save);
+      });
+    },
+    openSettings() {
+      const s = Core.getModuleSettings(this.id, this.defaultSettings);
+      showSettingsWindow(s, () => {
+        Core.saveModuleSettings(this.id, s);
+      });
+    },
+    closeAllWindows() {
+      if (_settingsWindow) {
+        _settingsWindow.close();
+        _settingsWindow = null;
+      }
+      if (_previewWindow) {
+        _previewWindow.close();
+        _previewWindow = null;
+      }
     }
   };
 
@@ -787,6 +1795,9 @@ Format:
 >\u9009\u9879\u56DB\uFF1A[\u63D0\u4F9B\u4E00\u4E2A\u7B26\u5408\u5F53\u4E0B\u60C5\u666F\u7684\uFF0C\u5E26\u6709\u60C5\u8272\u6216\u6311\u9017\u610F\u5473\u7684NSFW\u884C\u52A8\u9009\u9879]
 </xx>`;
   var ICONS = ["\u{1F50D}", "\u26A1", "\u{1F4AC}", "\u{1F525}"];
+  var _optionsWindow = null;
+  var _settingsWindow2 = null;
+  var _processing2 = false;
   function parseOptions(text) {
     const match = text.match(XX_REGEX);
     if (!match) return null;
@@ -798,55 +1809,181 @@ Format:
     }
     return options.length ? options : null;
   }
-  function showOptions(options) {
-    $("#stk-plot-options").remove();
+  function _renderOptionsContent(options) {
     const items = options.map(
       (o, i) => `<div class="stk-po-item" data-idx="${i}">${ICONS[i] || "\u25B6"} ${_.escape(o)}</div>`
     ).join("");
-    $("body").append(`
-        <div id="stk-plot-options">
-            <div class="stk-po-header">
-                <span>\u{1F3AD} \u5267\u60C5\u63A8\u8FDB</span>
-                <span id="stk-po-close" class="fa-solid fa-xmark"></span>
-            </div>
+    return `
+        <div class="stk-po-options">
             ${items}
         </div>
-    `);
-    let isDragging = false, offsetX, offsetY;
-    $("#stk-plot-options .stk-po-header").on("mousedown", function(e) {
-      if ($(e.target).is("#stk-po-close")) return;
-      isDragging = true;
-      const rect = $("#stk-plot-options")[0].getBoundingClientRect();
-      offsetX = e.clientX - rect.left;
-      offsetY = e.clientY - rect.top;
-      e.preventDefault();
+        <div class="stk-po-actions">
+            <button class="stk-po-btn stk-po-cancel">\u5173\u95ED</button>
+        </div>
+    `;
+  }
+  function showOptions(options) {
+    if (_optionsWindow) {
+      _optionsWindow.close();
+      _optionsWindow = null;
+    }
+    _optionsWindow = new DraggableWindow({
+      id: "stk-plot-options-window",
+      title: "\u{1F3AD} \u5267\u60C5\u63A8\u8FDB",
+      content: _renderOptionsContent(options),
+      width: 400,
+      height: "auto",
+      anchor: "center",
+      persistState: true,
+      showClose: true,
+      showMinimize: false,
+      className: "stk-plot-options-window",
+      onClose: () => {
+        _optionsWindow = null;
+      }
     });
-    $(document).on("mousemove.stkpo", function(e) {
-      if (!isDragging) return;
-      $("#stk-plot-options").css({
-        left: e.clientX - offsetX + "px",
-        top: e.clientY - offsetY + "px",
-        right: "auto",
-        bottom: "auto"
-      });
-    });
-    $(document).on("mouseup.stkpo", function() {
-      isDragging = false;
-    });
-    $("#stk-po-close").on("click", () => {
-      $("#stk-plot-options").remove();
-      $(document).off(".stkpo");
-    });
-    $(".stk-po-item").on("click", function() {
-      const text = options[$(this).data("idx")];
-      $("#stk-plot-options").remove();
-      $(document).off(".stkpo");
+    _optionsWindow.show();
+    _optionsWindow.$body.find(".stk-po-item").on("click", function() {
+      const idx = $(this).data("idx");
+      const text = options[idx];
       if (!text) return;
+      _optionsWindow.close();
+      _optionsWindow = null;
       $("#send_textarea").val(text).trigger("input");
       $("#send_but").trigger("click");
     });
+    _optionsWindow.$body.find(".stk-po-cancel").on("click", () => {
+      _optionsWindow.close();
+      _optionsWindow = null;
+    });
   }
-  var _processing2 = false;
+  function showSettingsWindow2(settings, save) {
+    if (_settingsWindow2) {
+      _settingsWindow2.bringToFront();
+      return;
+    }
+    const content = `
+        <div class="stk-settings-content">
+            <div class="stk-section">
+                <div class="stk-section-title">\u2699\uFE0F \u8BF7\u6C42\u8BBE\u7F6E</div>
+                <div class="stk-toggle">
+                    <input type="checkbox" id="po_auto_new" ${settings.auto_request ? "checked" : ""} />
+                    <span>\u81EA\u52A8\u8BF7\u6C42</span>
+                </div>
+                <div class="stk-row">
+                    <label>\u8BF7\u6C42\u65B9\u5F0F
+                        <select id="po_reqmode_new" class="text_pole">
+                            <option value="sequential"${settings.request_mode === "sequential" ? " selected" : ""}>\u4F9D\u6B21\u91CD\u8BD5</option>
+                            <option value="parallel"${settings.request_mode === "parallel" ? " selected" : ""}>\u540C\u65F6\u8BF7\u6C42</option>
+                            <option value="hybrid"${settings.request_mode === "hybrid" ? " selected" : ""}>\u5148\u4E00\u6B21\u540E\u5E76\u884C</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="stk-row">
+                    <label>\u91CD\u8BD5\u6B21\u6570
+                        <input type="number" id="po_retries_new" class="text_pole" value="${settings.retry_count}" min="1" max="10" />
+                    </label>
+                </div>
+                <div class="stk-toggle">
+                    <input type="checkbox" id="po_notification_new" ${settings.notification ? "checked" : ""} />
+                    <span>\u663E\u793A\u901A\u77E5</span>
+                </div>
+            </div>
+            <div class="stk-section">
+                <div class="stk-section-title">\u{1F527} \u64CD\u4F5C</div>
+                <div class="stk-btn stk-po-retry-btn" style="text-align:center">\u{1F504} \u624B\u52A8\u751F\u6210/\u91CD\u8BD5</div>
+            </div>
+            <div class="stk-section">
+                <div class="stk-section-title">\u{1F4CB} \u6A21\u677F\u7BA1\u7406</div>
+                <div class="stk-row">
+                    <select id="po_template_select" class="text_pole" style="width:100%">
+                        <option value="">-- \u9009\u62E9\u6A21\u677F --</option>
+                    </select>
+                </div>
+                <div class="stk-row stk-template-actions">
+                    <button class="stk-btn stk-po-save-template" style="flex:1">\u4FDD\u5B58\u4E3A\u6A21\u677F</button>
+                    <button class="stk-btn stk-po-export-template" style="flex:1">\u5BFC\u51FA</button>
+                </div>
+            </div>
+        </div>
+    `;
+    _settingsWindow2 = new DraggableWindow({
+      id: "stk-plot-options-settings",
+      title: "\u{1F3AD} \u5267\u60C5\u63A8\u8FDB\u8BBE\u7F6E",
+      content,
+      width: 380,
+      height: "auto",
+      anchor: "top-right",
+      offset: { x: 20, y: 100 },
+      persistState: true,
+      showClose: true,
+      showMinimize: false,
+      className: "stk-settings-window",
+      onClose: () => {
+        _settingsWindow2 = null;
+      }
+    });
+    _settingsWindow2.show();
+    const templates = templateManager.getAllTemplates();
+    const $select = _settingsWindow2.$body.find("#po_template_select");
+    templates.forEach((t) => {
+      $select.append(`<option value="${t.id}">${t.name}</option>`);
+    });
+    const activeTemplate = templateManager.getActiveTemplate();
+    if (activeTemplate) {
+      $select.val(activeTemplate.id);
+    }
+    _settingsWindow2.$body.find("#po_auto_new").on("change", function() {
+      settings.auto_request = this.checked;
+      save();
+    });
+    _settingsWindow2.$body.find("#po_reqmode_new").on("change", function() {
+      settings.request_mode = this.value;
+      save();
+    });
+    _settingsWindow2.$body.find("#po_retries_new").on("input", function() {
+      settings.retry_count = Number(this.value);
+      save();
+    });
+    _settingsWindow2.$body.find("#po_notification_new").on("change", function() {
+      settings.notification = this.checked;
+      save();
+    });
+    const self = PlotOptionsModule;
+    _settingsWindow2.$body.find(".stk-po-retry-btn").on("click", async () => {
+      const lastId = Core.getLastMessageId();
+      if (lastId < 0) {
+        toastr.warning("\u6CA1\u6709\u6D88\u606F", "[PlotOptions]");
+        return;
+      }
+      await self._runExtra(lastId, settings);
+    });
+    _settingsWindow2.$body.find("#po_template_select").on("change", function() {
+      const templateId = this.value;
+      if (templateId) {
+        templateManager.setActiveTemplate(templateId);
+      }
+    });
+    _settingsWindow2.$body.find(".stk-po-save-template").on("click", () => {
+      self._saveCurrentPromptAsTemplate();
+    });
+    _settingsWindow2.$body.find(".stk-po-export-template").on("click", () => {
+      const active = templateManager.getActiveTemplate();
+      if (active) {
+        const json = templateManager.exportTemplate(active.id);
+        const blob = new Blob([json], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${active.name}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toastr.success("\u6A21\u677F\u5DF2\u5BFC\u51FA", "[PlotOptions]");
+      } else {
+        toastr.warning("\u6CA1\u6709\u6D3B\u52A8\u6A21\u677F", "[PlotOptions]");
+      }
+    });
+  }
   var PlotOptionsModule = {
     id: "plot_options",
     name: "\u{1F3AD} \u5267\u60C5\u63A8\u8FDB",
@@ -867,6 +2004,25 @@ Format:
       plot_options_prompt: DEFAULT_PROMPT
     },
     init() {
+      this._initDefaultTemplate();
+    },
+    _initDefaultTemplate() {
+      const templates = templateManager.getAllTemplates();
+      const hasDefault = templates.some((t) => t.metadata.isDefault);
+      if (!hasDefault) {
+        templateManager.createTemplate({
+          id: "default-plot-options",
+          name: "\u9ED8\u8BA4\u5267\u60C5\u63A8\u8FDB",
+          description: "\u9ED8\u8BA4\u7684\u5267\u60C5\u63A8\u8FDB\u63D0\u793A\u8BCD\u6A21\u677F",
+          data: {
+            prompt: DEFAULT_PROMPT
+          },
+          metadata: {
+            isDefault: true,
+            module: "plot_options"
+          }
+        });
+      }
     },
     async onMessage(msgId) {
       const s = Core.getModuleSettings(this.id, this.defaultSettings);
@@ -892,6 +2048,10 @@ Format:
     onChatReady() {
     },
     async _getSystemPrompt() {
+      const activeTemplate = templateManager.getActiveTemplate();
+      if (activeTemplate && activeTemplate.data.prompt) {
+        return activeTemplate.data.prompt;
+      }
       const wb = await Core.getWorldBookEntry("plot_options_prompt");
       return wb || DEFAULT_PROMPT;
     },
@@ -923,6 +2083,29 @@ Format:
         if (settings.notification) toastr.error("\u5267\u60C5\u9009\u9879\u751F\u6210\u5931\u8D25", "[PlotOptions]");
       }
     },
+    async _saveCurrentPromptAsTemplate() {
+      const currentPrompt = await this._getSystemPrompt();
+      const name = prompt("\u8F93\u5165\u6A21\u677F\u540D\u79F0:", `\u6A21\u677F ${Date.now()}`);
+      if (!name) return;
+      templateManager.createTemplate({
+        name,
+        description: "\u7528\u6237\u521B\u5EFA\u7684\u5267\u60C5\u63A8\u8FDB\u6A21\u677F",
+        data: {
+          prompt: currentPrompt
+        },
+        metadata: {
+          module: "plot_options"
+        }
+      });
+      toastr.success("\u6A21\u677F\u5DF2\u4FDD\u5B58", "[PlotOptions]");
+      if (_settingsWindow2) {
+        const $select = _settingsWindow2.$body.find("#po_template_select");
+        $select.empty().append('<option value="">-- \u9009\u62E9\u6A21\u677F --</option>');
+        templateManager.getAllTemplates().forEach((t) => {
+          $select.append(`<option value="${t.id}">${t.name}</option>`);
+        });
+      }
+    },
     renderUI(s) {
       return `
             <div class="stk-sub-section">
@@ -948,6 +2131,7 @@ Format:
                 </div>
                 <div class="stk-sub-body">
                     <div class="stk-btn" id="po_retry_btn" style="text-align:center">\u{1F504} \u624B\u52A8\u751F\u6210/\u91CD\u8BD5</div>
+                    <div class="stk-btn" id="po_settings_btn" style="text-align:center;margin-top:8px">\u{1F4CB} \u6253\u5F00\u8BBE\u7F6E\u7A97\u53E3</div>
                 </div>
             </div>`;
     },
@@ -977,6 +2161,25 @@ Format:
         }
         await self._runExtra(lastId, s);
       });
+      $("#po_settings_btn").on("click", () => {
+        showSettingsWindow2(s, save);
+      });
+    },
+    openSettings() {
+      const s = Core.getModuleSettings(this.id, this.defaultSettings);
+      showSettingsWindow2(s, () => {
+        Core.saveModuleSettings(this.id, s);
+      });
+    },
+    closeAllWindows() {
+      if (_optionsWindow) {
+        _optionsWindow.close();
+        _optionsWindow = null;
+      }
+      if (_settingsWindow2) {
+        _settingsWindow2.close();
+        _settingsWindow2 = null;
+      }
     }
   };
 
