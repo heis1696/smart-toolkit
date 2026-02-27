@@ -15,10 +15,13 @@ smart-toolkit/
 │   ├── core.js               # 核心层：设置管理、消息工具、API 请求、世界书管理
 │   ├── ui.js                 # UI 层：顶栏按钮、侧滑面板、共享配置 + 模块管理
 │   ├── managers/             # 管理器层：单例服务
-│   │   ├── index.js          # 导出 storage、templateManager、apiPresetManager
-│   │   ├── StorageManager.js # 双存储策略（extensionSettings + IndexedDB）
+│   │   ├── index.js          # 导出所有管理器
+│   │   ├── StorageManager.js # 双存储策略（extensionSettings + IndexedDB）+ Profile 隔离
 │   │   ├── TemplateManager.js# 模板 CRUD、导入导出、World Book 同步
-│   │   └── ApiPresetManager.js# API 预设管理、测试连接、获取模型
+│   │   ├── ApiPresetManager.js# API 预设管理、测试连接、获取模型
+│   │   ├── DatabaseManager.js# 数据库核心：表格合并、排序、消息解析
+│   │   ├── TableLogicManager.js# 填表逻辑：编辑命令、审计日志
+│   │   └── PlotAdvanceManager.js# 剧情推进：记忆召回、世界书集成
 │   ├── components/           # 组件层：可复用 UI 组件
 │   │   ├── index.js          # 导出所有组件
 │   │   ├── WindowManager.js  # 窗口 z-index 控制、状态持久化
@@ -27,10 +30,16 @@ smart-toolkit/
 │   │   ├── DynamicList.js    # 动态增删列表组件
 │   │   ├── ModalPopup.js     # 模态框/Toast/确认对话框
 │   │   ├── SidebarWindow.js  # 侧边栏主窗口（可拖拽）
-│   │   └── OptionsBarWindow.js# 快捷选项独立窗口
+│   │   ├── OptionsBarWindow.js# 快捷选项独立窗口
+│   │   ├── TabbedPanel.js    # 标签页面板组件
+│   │   ├── DatabaseVisualizer.js# 数据库可视化编辑组件
+│   │   ├── ResponsiveGrid.js # 响应式网格组件
+│   │   └── WorldbookSelector.js# 世界书选择器组件
 │   └── modules/              # 功能模块
 │       ├── statusbar.js      # 模块：状态栏生成器
-│       └── plotOptions.js    # 模块：剧情推进选项
+│       ├── plotOptions.js    # 模块：剧情推进选项
+│       └── shujuku/          # 模块：数据库管理（Shujuku 集成）
+│           └── index.js      # 主入口：菜单注册、窗口管理
 ├── dist/
 │   └── bundle.js             # esbuild 构建产物 (IIFE)
 ├── ARCHITECTURE.md           # 本文档
@@ -56,19 +65,28 @@ index.js (入口/事件总线)
     ├── core.js (数据 & 逻辑 & 世界书)
     │
     ├── managers/ (管理器层 - 单例服务)
-    │   ├── StorageManager    → 双存储策略
-    │   └── TemplateManager   → 模板管理
+    │   ├── StorageManager    → 双存储策略 + Profile 隔离
+    │   ├── TemplateManager   → 模板管理
+    │   ├── ApiPresetManager  → API 预设管理
+    │   ├── DatabaseManager   → 数据库核心
+    │   ├── TableLogicManager → 填表逻辑
+    │   └── PlotAdvanceManager→ 剧情推进
     │
     ├── components/ (组件层 - 可复用 UI)
     │   ├── WindowManager     → 窗口生命周期
     │   ├── DraggableWindow   → 可拖拽窗口
     │   ├── CollapsibleSection→ 折叠面板
     │   ├── DynamicList       → 动态列表
-    │   └── ModalPopup        → 弹窗组件
+    │   ├── ModalPopup        → 弹窗组件
+    │   ├── TabbedPanel       → 标签页面板
+    │   ├── DatabaseVisualizer→ 数据库可视化
+    │   ├── ResponsiveGrid    → 响应式网格
+    │   └── WorldbookSelector → 世界书选择器
     │
     └── modules/ (功能模块)
         ├── statusbar.js
-        └── plotOptions.js
+        ├── plotOptions.js
+        └── shujuku/
 ```
 
 ### 1. `index.js` — 入口
@@ -120,6 +138,13 @@ const data = await storage.get('key');
 | `set(key, value)` | 存储数据（双写） |
 | `delete(key)` | 删除数据 |
 | `clear()` | 清空所有数据 |
+| `getProfileSettings(code, defaults)` | 获取 Profile 隔离设置 |
+| `setProfileSettings(code, settings)` | 保存 Profile 隔离设置 |
+| `switchProfile(newCode)` | 切换当前 Profile |
+| `createProfile(code, name)` | 创建新 Profile |
+| `deleteProfile(code)` | 删除 Profile |
+| `listProfiles()` | 列出所有 Profile |
+| `getProfileKey(code, key)` | 获取 Profile 下的特定键值 |
 
 #### TemplateManager
 
@@ -196,6 +221,89 @@ const models = await apiPresetManager.fetchModels(presetId);
 | `fetchModels(presetId)` | 获取可用模型列表 |
 | `testConnectionFromConfig(config)` | 从配置对象测试连接（UI 用） |
 | `fetchModelsFromConfig(config)` | 从配置对象获取模型（UI 用） |
+
+#### DatabaseManager
+
+单例模式，数据库核心管理器，处理表格数据解析和合并：
+
+```javascript
+import { databaseManager } from './managers/DatabaseManager.js';
+
+// 加载所有聊天消息
+await databaseManager.loadAllChatMessages_ACU();
+
+// 合并所有独立表格
+const tables = databaseManager.mergeAllIndependentTables_ACU(messages);
+
+// 获取排序后的表格键
+const sortedKeys = databaseManager.getSortedSheetKeys_ACU(tables);
+```
+
+| 方法 | 说明 |
+|------|------|
+| `getInstance()` | 获取单例实例 |
+| `loadAllChatMessages_ACU()` | 加载所有聊天消息 |
+| `mergeAllIndependentTables_ACU(msgs)` | 合并独立表格数据 |
+| `getSortedSheetKeys_ACU(tables)` | 获取排序后的表格键 |
+| `parseTableFromMessage(msg)` | 从消息解析表格 |
+| `getTableData(tableName)` | 获取指定表格数据 |
+
+#### TableLogicManager
+
+单例模式，填表逻辑管理器，处理编辑命令和审计日志：
+
+```javascript
+import { tableLogicManager } from './managers/TableLogicManager.js';
+
+// 解析编辑命令
+const commands = tableLogicManager.parseEditCommands(input);
+
+// 执行批量更新
+await tableLogicManager.executeBatchUpdate(tableName, commands);
+
+// 获取审计日志
+const logs = tableLogicManager.getAuditLogs(tableName);
+```
+
+| 方法 | 说明 |
+|------|------|
+| `getInstance()` | 获取单例实例 |
+| `parseEditCommands(input)` | 解析编辑命令 |
+| `executeBatchUpdate(table, cmds)` | 执行批量更新 |
+| `getAuditLogs(tableName)` | 获取审计日志 |
+| `clearAuditLogs(tableName)` | 清除审计日志 |
+| `validateCommand(cmd)` | 验证命令格式 |
+
+#### PlotAdvanceManager
+
+单例模式，剧情推进管理器，处理记忆召回和世界书集成：
+
+```javascript
+import { plotAdvanceManager } from './managers/PlotAdvanceManager.js';
+
+// 设置记忆召回数量
+plotAdvanceManager.setMemoryRecallCount(5);
+
+// 设置选中的世界书
+plotAdvanceManager.setSelectedWorldbooks(['wb1', 'wb2']);
+
+// 生成推进提示词
+const prompt = await plotAdvanceManager.generatePrompt();
+
+// 执行推进（可循环）
+await plotAdvanceManager.advance({ loop: true });
+```
+
+| 方法 | 说明 |
+|------|------|
+| `getInstance()` | 获取单例实例 |
+| `setMemoryRecallCount(count)` | 设置记忆召回数量 |
+| `getMemoryRecallCount()` | 获取记忆召回数量 |
+| `setSelectedWorldbooks(keys)` | 设置选中世界书 |
+| `getSelectedWorldbooks()` | 获取选中世界书 |
+| `generatePrompt()` | 生成推进提示词 |
+| `advance(opts)` | 执行推进 |
+| `isLooping()` | 是否正在循环 |
 
 ### 4. `components/` — 组件层
 
@@ -327,6 +435,106 @@ optionsBarWindow.close();
 - 状态实时保存
 - 独立于主侧边栏
 
+#### TabbedPanel
+
+标签页面板组件，支持多标签切换和徽章通知：
+
+```javascript
+import { TabbedPanel } from './components/index.js';
+
+const panel = new TabbedPanel({
+    tabs: [
+        { id: 'db', label: '数据库', content: '<div>...</div>' },
+        { id: 'plot', label: '剧情推进', badge: 3 },
+        { id: 'settings', label: '设置' }
+    ],
+    activeTab: 'db',
+    onChange: (tabId) => {}
+});
+```
+
+| 方法 | 说明 |
+|------|------|
+| `setActiveTab(id)` | 切换活动标签 |
+| `setTabBadge(id, count)` | 设置徽章数字 |
+| `updateTabContent(id, html)` | 更新标签内容 |
+| `getActiveTab()` | 获取当前活动标签 ID |
+
+#### DatabaseVisualizer
+
+数据库可视化编辑组件，用于表格数据展示和编辑：
+
+```javascript
+import { DatabaseVisualizer } from './components/index.js';
+
+const visualizer = new DatabaseVisualizer({
+    tables: ['角色表', '地点表', '事件表'],
+    onSelect: (tableName) => {},
+    onEdit: (tableName, rowId, data) => {}
+});
+
+visualizer.setTableData('角色表', rows);
+visualizer.refresh();
+```
+
+| 方法 | 说明 |
+|------|------|
+| `setTableData(name, rows)` | 设置表格数据 |
+| `refresh()` | 刷新当前表格 |
+| `getSelectedTable()` | 获取选中表格名 |
+| `clearAll()` | 清空所有数据 |
+
+#### ResponsiveGrid
+
+响应式网格组件，支持断点自适应布局：
+
+```javascript
+import { ResponsiveGrid } from './components/index.js';
+
+const grid = new ResponsiveGrid({
+    breakpoints: { sm: 320, md: 640, lg: 1024 },
+    columns: { sm: 1, md: 2, lg: 3 },
+    gap: 16,
+    items: [
+        { content: '<div>Item 1</div>', colSpan: 1 },
+        { content: '<div>Item 2</div>', colSpan: 2 }
+    ]
+});
+```
+
+| 方法 | 说明 |
+|------|------|
+| `addItem(config)` | 添加网格项 |
+| `removeItem(index)` | 移除网格项 |
+| `setLayout(breakpoint, cols)` | 设置断点列数 |
+| `refresh()` | 重新计算布局 |
+
+#### WorldbookSelector
+
+世界书选择器组件，支持多选和搜索：
+
+```javascript
+import { WorldbookSelector } from './components/index.js';
+
+const selector = new WorldbookSelector({
+    multiple: true,
+    showSearch: true,
+    showCount: true,
+    selected: ['entry1', 'entry2'],
+    onChange: (selectedKeys) => {}
+});
+
+selector.loadEntries();
+selector.getSelected();
+```
+
+| 方法 | 说明 |
+|------|------|
+| `loadEntries()` | 加载世界书条目 |
+| `setSelected(keys)` | 设置选中条目 |
+| `getSelected()` | 获取选中条目 |
+| `filter(keyword)` | 过滤条目 |
+
 ### 5. `modules/` — 功能模块
 
 职责：实现具体功能，使用管理器和组件构建 UI。
@@ -355,7 +563,17 @@ OptionsBarWindow（独立快捷选项窗口）
 独立窗口（通过 DraggableWindow）
   ├── 🎭 剧情推进窗口
   ├── 📊 状态栏设置窗口
-  └── 🧪 提取测试预览窗口
+  ├── 🧪 提取测试预览窗口
+  └── 📚 Shujuku 数据库窗口
+      ├── TabbedPanel（标签导航）
+      │   ├── 📊 数据库标签
+      │   │   └── DatabaseVisualizer（表格选择 + 数据编辑）
+      │   ├── 🎬 剧情推进标签
+      │   │   ├── 记忆召回数量设置
+      │   │   ├── WorldbookSelector（世界书选择）
+      │   │   └── 推进按钮（可循环）
+      │   └── ⚙️ 设置标签
+      └── Profile 隔离存储（多聊天环境支持）
 ```
 
 ---
@@ -536,7 +754,12 @@ export const MyModule = {
 managers/
 ├── StorageManager.js ──── (standalone, 单例)
 ├── TemplateManager.js ──── StorageManager
-└── ApiPresetManager.js ─── StorageManager
+├── ApiPresetManager.js ─── StorageManager
+├── DatabaseManager.js ──── StorageManager
+├── TableLogicManager.js ──┬── DatabaseManager
+│                         └── StorageManager
+└── PlotAdvanceManager.js ─┬── DatabaseManager
+                           └── StorageManager
 
 modules/
 ├── statusbar.js ──────┬── StorageManager
@@ -545,9 +768,16 @@ modules/
 │                      ├── DraggableWindow
 │                      └── WindowManager
 │
-└── plotOptions.js ────┼── StorageManager
-                       ├── TemplateManager
-                       ├── ApiPresetManager
+├── plotOptions.js ────┼── StorageManager
+│                      ├── TemplateManager
+│                      ├── ApiPresetManager
+│                      ├── DraggableWindow
+│                      └── WindowManager
+│
+└── shujuku/ ──────────┬── DatabaseManager
+                       ├── TableLogicManager
+                       ├── PlotAdvanceManager
+                       ├── StorageManager
                        ├── DraggableWindow
                        └── WindowManager
 
@@ -559,6 +789,11 @@ components/
 │                         └── modules
 ├── OptionsBarWindow.js ──┬── DraggableWindow
 │                         └── Core
+├── TabbedPanel.js ─────── (standalone)
+├── DatabaseVisualizer.js ─┬── DatabaseManager
+│                         └── StorageManager
+├── ResponsiveGrid.js ───── (standalone)
+├── WorldbookSelector.js ── Core
 ├── DynamicList.js ─────── (standalone)
 ├── CollapsibleSection.js─ (standalone)
 ├── ModalPopup.js ──────── (standalone)

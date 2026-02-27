@@ -6,6 +6,77 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-02-27
+
+### Added
+
+#### Shujuku 模块集成 (Phase 6)
+- **DatabaseManager** - 数据库核心管理器
+  - 表格数据解析与合并 (`mergeAllIndependentTables_ACU`)
+  - 表格排序 (`getSortedSheetKeys_ACU`)
+  - 聊天消息加载 (`loadAllChatMessages_ACU`)
+  - STK 兼容的表格数据处理
+- **TableLogicManager** - 填表逻辑管理器
+  - 表格编辑命令解析与执行
+  - 审计日志记录
+  - 批量更新支持
+  - 单例模式实现
+- **PlotAdvanceManager** - 剧情推进管理器
+  - 记忆召回数量控制
+  - 世界书选择集成
+  - 提示词生成
+  - 可循环推进支持
+  - 单例模式实现
+- **ShujukuModule** - 主模块入口
+  - 菜单注册与斜杠命令
+  - 主窗口管理
+  - 标签页导航（数据库/剧情推进/设置）
+  - Profile 隔离存储支持
+
+#### UI 组件扩展
+- **TabbedPanel** - 标签页面板组件
+  - 多标签切换
+  - 徽章通知
+  - 内容动态更新
+- **DatabaseVisualizer** - 数据库可视化组件
+  - 表格选择与数据展示
+  - 实时数据编辑
+  - 刷新与排序支持
+- **ResponsiveGrid** - 响应式网格组件
+  - 断点自适应布局
+  - 列跨度/行跨度支持
+  - ResizeObserver 监听
+- **WorldbookSelector** - 世界书选择器组件
+  - 多选/单选模式
+  - 搜索过滤
+  - 条目计数显示
+
+#### StorageManager 扩展
+- Profile 隔离存储方法
+  - `getProfileSettings(profileCode, defaults)`
+  - `setProfileSettings(profileCode, settings)`
+  - `switchProfile(newCode)`
+  - `createProfile(code, name)`
+  - `deleteProfile(code)`
+  - `listProfiles()`
+  - `getProfileKey(code, key)`
+
+### Technical Details
+- 新增文件：
+  - `src/managers/DatabaseManager.js`
+  - `src/managers/TableLogicManager.js`
+  - `src/managers/PlotAdvanceManager.js`
+  - `src/modules/shujuku/index.js`
+  - `src/components/TabbedPanel.js`
+  - `src/components/DatabaseVisualizer.js`
+  - `src/components/ResponsiveGrid.js`
+  - `src/components/WorldbookSelector.js`
+- 更新依赖：
+  - ShujukuModule 依赖 DatabaseManager、TableLogicManager、PlotAdvanceManager
+  - DatabaseVisualizer 依赖 DatabaseManager、StorageManager
+  - TableLogicManager 依赖 DatabaseManager、StorageManager
+  - PlotAdvanceManager 依赖 DatabaseManager、StorageManager
+
 ## [1.2.0] - 2026-02-27
 
 ### Added
