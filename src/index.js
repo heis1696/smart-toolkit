@@ -4,9 +4,8 @@ import { UI } from './ui.js';
 import { StatusBarModule } from './modules/statusbar.js';
 import { PlotOptionsModule } from './modules/plotOptions.js';
 import { apiPresetManager } from './managers/index.js';
-import { shujukuModule } from './modules/shujuku/index.js';
 
-const modules = [StatusBarModule, PlotOptionsModule, shujukuModule];
+const modules = [StatusBarModule, PlotOptionsModule];
 
 jQuery(async function () {
     const ctx = SillyTavern.getContext();

@@ -6,11 +6,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-02-27
+
+### Changed
+
+#### UI 架构重构
+- **ui.js** - 重构为 Shujuku 风格独立窗口
+  - 移除顶栏按钮入口，改用扩展菜单 (`addAutoCardMenuItem_ACU`) 注册
+  - 实现可拖拽、可缩放、可最大化的独立窗口
+  - 添加左侧导航栏 + 右侧内容区的标签页布局
+  - 窗口状态持久化（localStorage）
+  - 响应式设计（1100px/768px 断点）
+  - 保留 STK 核心功能（模块管理、API 配置、模板提示词）
+
+### Removed
+- **ShujukuModule** - 移除独立模块（功能已整合到 STK 核心 UI）
+- **src/modules/shujuku/** - 删除整个目录
+- **TabbedWindow.js** - 删除独立组件（功能已整合到 ui.js）
+
+### Technical Details
+- 修改文件：
+  - `src/ui.js` - 完全重构 UI 架构
+  - `src/index.js` - 移除 ShujukuModule 导入
+- 删除文件：
+  - `src/modules/shujuku/` 目录及所有文件
+  - `src/components/TabbedWindow.js`
+
 ## [1.3.0] - 2026-02-27
 
 ### Added
 
-#### Shujuku 模块集成 (Phase 6)
+#### 数据库管理器
 - **DatabaseManager** - 数据库核心管理器
   - 表格数据解析与合并 (`mergeAllIndependentTables_ACU`)
   - 表格排序 (`getSortedSheetKeys_ACU`)
@@ -27,11 +53,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - 提示词生成
   - 可循环推进支持
   - 单例模式实现
-- **ShujukuModule** - 主模块入口
-  - 菜单注册与斜杠命令
-  - 主窗口管理
-  - 标签页导航（数据库/剧情推进/设置）
-  - Profile 隔离存储支持
 
 #### UI 组件扩展
 - **TabbedPanel** - 标签页面板组件
@@ -66,13 +87,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - `src/managers/DatabaseManager.js`
   - `src/managers/TableLogicManager.js`
   - `src/managers/PlotAdvanceManager.js`
-  - `src/modules/shujuku/index.js`
   - `src/components/TabbedPanel.js`
   - `src/components/DatabaseVisualizer.js`
   - `src/components/ResponsiveGrid.js`
   - `src/components/WorldbookSelector.js`
 - 更新依赖：
-  - ShujukuModule 依赖 DatabaseManager、TableLogicManager、PlotAdvanceManager
   - DatabaseVisualizer 依赖 DatabaseManager、StorageManager
   - TableLogicManager 依赖 DatabaseManager、StorageManager
   - PlotAdvanceManager 依赖 DatabaseManager、StorageManager

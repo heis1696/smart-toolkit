@@ -939,49 +939,312 @@
     stream: false
   };
   var CSS = `
-<style>
-#stk-panel{position:fixed;top:0;right:-420px;width:400px;height:100vh;background:var(--SmartThemeBlurTintColor);border-left:1px solid var(--SmartThemeBorderColor);z-index:31000;transition:right .3s ease;display:flex;flex-direction:column;overflow:hidden;box-shadow:-2px 0 8px rgba(0,0,0,.1)}
-#stk-panel.open{right:0}
-#stk-panel-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--SmartThemeBorderColor);flex-shrink:0}
-#stk-panel-header h3{margin:0;font-size:var(--mainFontSize);display:flex;align-items:center;gap:6px;color:var(--SmartThemeBodyColor)}
-#stk-panel-body{flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:10px}
-#stk-overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,.3);z-index:30999;display:none}
-#stk-overlay.open{display:block}
-.stk-section{border:1px solid var(--SmartThemeBorderColor);border-radius:8px;overflow:hidden}
-.stk-section-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;user-select:none;font-weight:600;font-size:13px;color:var(--SmartThemeBodyColor);pointer-events:auto}
-.stk-section-header:hover{background:var(--black30a)}
-.stk-section-header .stk-arrow{transition:transform .2s;font-size:11px}
-.stk-section-header.collapsed .stk-arrow{transform:rotate(-90deg)}
-.stk-arrow.collapsed{transform:rotate(-90deg)}
-.stk-section-body{padding:8px 12px;display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--SmartThemeBorderColor)}
-.stk-section-body.stk-hidden{display:none}
-.stk-row{display:flex;align-items:center;gap:8px}
-.stk-row label{font-size:12px;flex:1;display:flex;flex-direction:column;gap:2px}
-.stk-row label>span{font-size:11px;opacity:.7}
-.stk-row .text_pole{font-size:12px;padding:4px 8px}
-.stk-row select.text_pole{padding:3px 6px}
-.stk-row textarea.text_pole{font-family:monospace;font-size:11px;resize:vertical}
-.stk-toggle{display:flex;align-items:center;gap:6px;font-size:12px}
-.stk-toggle input[type=checkbox]{margin:0}
-.stk-module-header{display:flex;align-items:center;gap:8px;flex:1}
-.stk-module-controls{display:flex;align-items:center;gap:10px;font-size:12px}
-.stk-btn{padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;text-align:center;border:1px solid var(--SmartThemeBorderColor);background:var(--SmartThemeBlurTintColor);pointer-events:auto}
-.stk-btn:hover{background:var(--black30a)}
-.stk-sub-section{border:1px dashed var(--SmartThemeBorderColor);border-radius:6px;overflow:hidden;margin-top:2px}
-.stk-sub-header{padding:6px 10px;cursor:pointer;font-size:12px;font-weight:500;display:flex;align-items:center;gap:6px;pointer-events:auto}
-.stk-sub-header:hover{background:var(--black30a)}
-.stk-sub-body{padding:6px 10px;display:flex;flex-direction:column;gap:5px;border-top:1px solid var(--SmartThemeBorderColor)}
-.stk-sub-body.stk-hidden{display:none}
-#stk-top-btn{cursor:pointer;opacity:.7;transition:opacity .2s;display:flex;align-items:center;justify-content:center;height:var(--topBarBlockSize);width:var(--topBarBlockSize);font-size:var(--topbarIconSize)}
-#stk-top-btn:hover{opacity:1}
-#stk-plot-options{position:fixed;bottom:80px;right:20px;width:340px;background:var(--SmartThemeBlurTintColor,#1a1a2e);border:1px solid var(--SmartThemeBorderColor);border-radius:12px;z-index:31001;box-shadow:0 8px 32px rgba(0,0,0,.4);overflow:hidden}
-.stk-po-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;font-weight:600;font-size:13px;border-bottom:1px solid var(--SmartThemeBorderColor);cursor:move;user-select:none}
-#stk-po-close{cursor:pointer;padding:4px;opacity:.7}
-#stk-po-close:hover{opacity:1}
-.stk-po-item{padding:10px 14px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--SmartThemeBorderColor);transition:background .15s;pointer-events:auto}
-.stk-po-item:hover{background:var(--black30a)}
-.stk-po-item:last-child{border-bottom:none}
+<style id="stk-styles">
+:root {
+  --stk-bg: var(--SmartThemeBlurTintColor, #1a1a2e);
+  --stk-border: var(--SmartThemeBorderColor, rgba(255,255,255,0.1));
+  --stk-text: var(--SmartThemeBodyColor, #e0e0e0);
+  --stk-text-2: rgba(255,255,255,0.7);
+  --stk-text-3: rgba(255,255,255,0.5);
+  --stk-accent: linear-gradient(135deg, rgba(123, 183, 255, 0.22), rgba(155, 123, 255, 0.14));
+  --stk-accent-solid: #7bb7ff;
+  --stk-radius: 8px;
+  --stk-radius-lg: 12px;
+}
+
+#stk-window {
+  position: fixed;
+  background: var(--stk-bg);
+  border: 1px solid var(--stk-border);
+  border-radius: var(--stk-radius-lg);
+  box-shadow: 0 8px 32px rgba(0,0,0,.4);
+  z-index: 31000;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 400px;
+  min-height: 300px;
+}
+#stk-window.open { display: flex; }
+#stk-window.maximized {
+  top: 0 !important; left: 0 !important;
+  width: 100vw !important; height: 100vh !important;
+  border-radius: 0;
+}
+
+#stk-window-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--stk-border);
+  cursor: move;
+  user-select: none;
+  background: var(--stk-accent);
+  flex-shrink: 0;
+}
+#stk-window-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--stk-text);
+}
+#stk-window-title i { color: var(--stk-accent-solid); }
+#stk-window-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.stk-window-btn {
+  width: 28px; height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: all 0.15s;
+  color: var(--stk-text);
+}
+.stk-window-btn:hover { opacity: 1; background: rgba(255,255,255,0.1); }
+.stk-window-btn.close:hover { background: rgba(255,100,100,0.3); }
+
+#stk-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+#stk-nav {
+  width: 180px;
+  background: rgba(0,0,0,0.15);
+  border-right: 1px solid var(--stk-border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+.stk-nav-section {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--stk-border);
+}
+.stk-nav-section:last-child { border-bottom: none; }
+.stk-nav-title {
+  padding: 6px 14px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--stk-text-3);
+}
+.stk-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--stk-text-2);
+  transition: all 0.15s;
+  border-left: 3px solid transparent;
+}
+.stk-nav-btn:hover { background: rgba(255,255,255,0.05); color: var(--stk-text); }
+.stk-nav-btn.active {
+  background: var(--stk-accent);
+  color: var(--stk-text);
+  border-left-color: var(--stk-accent-solid);
+}
+.stk-nav-btn i { width: 16px; text-align: center; }
+
+#stk-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.stk-tab { display: none; }
+.stk-tab.active { display: block; }
+
+.stk-section {
+  border: 1px solid var(--stk-border);
+  border-radius: var(--stk-radius);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.stk-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  cursor: pointer;
+  user-select: none;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--stk-text);
+  background: rgba(255,255,255,0.03);
+}
+.stk-section-header:hover { background: rgba(255,255,255,0.06); }
+.stk-section-header .stk-arrow { transition: transform 0.2s; font-size: 11px; }
+.stk-section-header.collapsed .stk-arrow { transform: rotate(-90deg); }
+.stk-section-body {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--stk-border);
+}
+.stk-section-body.stk-hidden { display: none; }
+
+.stk-row { display: flex; align-items: center; gap: 8px; }
+.stk-row label {
+  font-size: 12px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--stk-text);
+}
+.stk-row label > span { font-size: 11px; opacity: 0.7; }
+.stk-row .text_pole {
+  font-size: 12px;
+  padding: 6px 10px;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid var(--stk-border);
+  border-radius: 6px;
+  color: var(--stk-text);
+}
+.stk-row .text_pole:focus { outline: none; border-color: var(--stk-accent-solid); }
+.stk-row select.text_pole { padding: 5px 8px; }
+.stk-row textarea.text_pole { font-family: monospace; font-size: 11px; resize: vertical; min-height: 80px; }
+
+.stk-toggle { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--stk-text); }
+.stk-toggle input[type=checkbox] { margin: 0; width: 16px; height: 16px; }
+
+.stk-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  text-align: center;
+  border: 1px solid var(--stk-border);
+  background: rgba(255,255,255,0.05);
+  color: var(--stk-text);
+  transition: all 0.15s;
+}
+.stk-btn:hover { background: rgba(255,255,255,0.1); }
+.stk-btn.primary { background: var(--stk-accent); border-color: transparent; }
+.stk-btn.primary:hover { filter: brightness(1.1); }
+
+.stk-sub-section {
+  border: 1px dashed var(--stk-border);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+.stk-sub-header {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--stk-text-2);
+}
+.stk-sub-header:hover { background: rgba(255,255,255,0.03); }
+.stk-sub-body {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px solid var(--stk-border);
+}
+.stk-sub-body.stk-hidden { display: none; }
+
+.stk-resize-handle {
+  position: absolute;
+  background: transparent;
+}
+.stk-resize-handle.se {
+  right: 0; bottom: 0;
+  width: 16px; height: 16px;
+  cursor: se-resize;
+}
+.stk-resize-handle.e { right: 0; top: 50px; width: 6px; height: calc(100% - 100px); cursor: e-resize; }
+.stk-resize-handle.s { bottom: 0; left: 50px; width: calc(100% - 100px); height: 6px; cursor: s-resize; }
+.stk-resize-handle.w { left: 0; top: 50px; width: 6px; height: calc(100% - 100px); cursor: w-resize; }
+.stk-resize-handle.n { top: 0; left: 50px; width: calc(100% - 100px); height: 6px; cursor: n-resize; }
+
+#stk-plot-options {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  width: 340px;
+  background: var(--stk-bg);
+  border: 1px solid var(--stk-border);
+  border-radius: var(--stk-radius-lg);
+  z-index: 31001;
+  box-shadow: 0 8px 32px rgba(0,0,0,.4);
+  overflow: hidden;
+}
+.stk-po-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  font-weight: 600;
+  font-size: 13px;
+  border-bottom: 1px solid var(--stk-border);
+  cursor: move;
+  user-select: none;
+}
+#stk-po-close { cursor: pointer; padding: 4px; opacity: 0.7; }
+#stk-po-close:hover { opacity: 1; }
+.stk-po-item {
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 12px;
+  border-bottom: 1px solid var(--stk-border);
+  transition: background 0.15s;
+  color: var(--stk-text);
+}
+.stk-po-item:hover { background: rgba(255,255,255,0.05); }
+.stk-po-item:last-child { border-bottom: none; }
+
+@media (max-width: 1100px) {
+  #stk-nav { width: 50px; }
+  .stk-nav-title { display: none; }
+  .stk-nav-btn { justify-content: center; padding: 12px 0; }
+  .stk-nav-btn span { display: none; }
+}
+@media (max-width: 768px) {
+  #stk-window { width: 100vw !important; height: 100vh !important; top: 0 !important; left: 0 !important; border-radius: 0; }
+  #stk-nav { width: 50px; }
+}
 </style>`;
+  var windowState = {
+    x: 100,
+    y: 80,
+    width: 900,
+    height: 650,
+    activeTab: "modules",
+    maximized: false
+  };
+  function loadWindowState() {
+    try {
+      const saved = localStorage.getItem("stk-window-state");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        windowState = { ...windowState, ...parsed };
+      }
+    } catch (e) {
+    }
+  }
+  function saveWindowState() {
+    localStorage.setItem("stk-window-state", JSON.stringify(windowState));
+  }
   var UI = {
     getSharedAPI() {
       const s = Core.getSettings();
@@ -997,22 +1260,67 @@
         stream: sh.stream
       };
     },
+    toggle() {
+      const $win = $("#stk-window");
+      if ($win.length) {
+        $win.toggleClass("open");
+        if ($win.hasClass("open")) this._bringToFront();
+      }
+    },
+    show() {
+      const $win = $("#stk-window");
+      if ($win.length) {
+        $win.addClass("open");
+        this._bringToFront();
+      }
+    },
+    hide() {
+      $("#stk-window").removeClass("open");
+    },
+    _bringToFront() {
+      const maxZ = Math.max(31e3, ...$("body > *").map(function() {
+        const z = parseInt($(this).css("z-index")) || 0;
+        return z;
+      }).get());
+      $("#stk-window").css("z-index", maxZ + 1);
+    },
+    _registerExtensionMenu() {
+      if (typeof addAutoCardMenuItem_ACU === "function") {
+        addAutoCardMenuItem_ACU(
+          "Smart Toolkit",
+          "fa-solid fa-toolbox",
+          () => this.toggle()
+        );
+        return;
+      }
+      const tryRegister = () => {
+        const $menu = $("#extensionsMenu");
+        if ($menu.length) {
+          const $item = $(`
+                    <div class="list-group-item flex-container flexGap5 interactable" id="stk-menu-item">
+                        <span class="fa-solid fa-toolbox extensionsMenuButtonIcon"></span>
+                        <span>Smart Toolkit</span>
+                    </div>
+                `);
+          $item.on("click", () => this.toggle());
+          $menu.append($item);
+        }
+      };
+      if (typeof eventSource !== "undefined" && eventSource.on) {
+        eventSource.on("extensions_loaded", tryRegister);
+      }
+      setTimeout(tryRegister, 1e3);
+    },
     render(modules2) {
       const s = Core.getSettings();
       if (!s._shared) s._shared = { ...SHARED_DEFAULTS };
       const sh = s._shared;
+      loadWindowState();
       $("head").append(CSS);
-      const topBtn = $('<div id="stk-top-btn" class="fa-solid fa-toolbox interactable" title="Smart Toolkit" tabindex="0"></div>');
-      const $holder = $("#top-settings-holder");
-      if ($holder.children().length > 1) {
-        $holder.children().eq(-2).after(topBtn);
-      } else {
-        $holder.append(topBtn);
-      }
-      let moduleOverviewHtml = "";
-      for (const m of modules2) {
+      this._registerExtensionMenu();
+      const moduleOverviewHtml = modules2.map((m) => {
         const ms = Core.getModuleSettings(m.id, m.defaultSettings);
-        moduleOverviewHtml += `
+        return `
             <div class="stk-row" style="justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05)">
                 <div class="stk-toggle">
                     <input type="checkbox" id="stk_mod_${m.id}_enabled" ${ms.enabled ? "checked" : ""} />
@@ -1024,11 +1332,10 @@
                     <option value="extra_model"${ms.update_mode === "extra_model" ? " selected" : ""}>\u989D\u5916\u6A21\u578B</option>
                 </select>` : ""}
             </div>`;
-      }
-      let modulePanelsHtml = "";
-      for (const m of modules2) {
+      }).join("");
+      const moduleSettingsHtml = modules2.map((m) => {
         const ms = Core.getModuleSettings(m.id, m.defaultSettings);
-        modulePanelsHtml += `
+        return `
             <div class="stk-section" id="stk_module_${m.id}">
                 <div class="stk-section-header interactable collapsed" tabindex="0">
                     <span>${m.name} \u8BBE\u7F6E</span>
@@ -1038,117 +1345,212 @@
                     ${m.renderUI(ms)}
                 </div>
             </div>`;
-      }
-      const panelHtml = `
-        <div id="stk-overlay"></div>
-        <div id="stk-panel">
-            <div id="stk-panel-header">
-                <h3>\u{1F9F0} Smart Toolkit</h3>
-                <div id="stk-panel-close" class="fa-solid fa-xmark interactable" style="cursor:pointer;font-size:16px;padding:4px" title="\u5173\u95ED"></div>
-            </div>
-            <div id="stk-panel-body">
-                <!-- \u5171\u4EABAPI\u914D\u7F6E + \u6A21\u5757\u603B\u89C8 -->
-                <div class="stk-section">
-                    <div class="stk-section-header interactable collapsed" tabindex="0">
-                        <span>\u{1F50C} \u5171\u4EAB API \u914D\u7F6E</span>
-                        <span class="stk-arrow fa-solid fa-chevron-down"></span>
-                    </div>
-                    <div class="stk-section-body stk-hidden">
-                        <!-- \u6A21\u5757\u542F\u7528/\u66F4\u65B0\u65B9\u5F0F -->
-                        <div class="stk-sub-section">
-                            <div class="stk-sub-header interactable" tabindex="0">
-                                <span class="stk-arrow fa-solid fa-chevron-down collapsed" style="font-size:10px"></span>
-                                \u{1F4CB} \u6A21\u5757\u7BA1\u7406
-                            </div>
-                            <div class="stk-sub-body stk-hidden">
-                                ${moduleOverviewHtml}
-                            </div>
-                        </div>
-                        <!-- API\u8BBE\u7F6E -->
-                        <div class="stk-sub-section">
-                            <div class="stk-sub-header interactable" tabindex="0">
-                                <span class="stk-arrow fa-solid fa-chevron-down collapsed" style="font-size:10px"></span>
-                                \u{1F517} API \u8FDE\u63A5
-                            </div>
-                            <div class="stk-sub-body stk-hidden">
-                                <div class="stk-toggle">
-                                    <input type="checkbox" id="stk_use_preset" ${sh.use_preset ? "checked" : ""} />
-                                    <span>\u4F7F\u7528\u5F53\u524D\u9884\u8BBE</span>
-                                </div>
-                                <div id="stk_custom_api" style="display:${sh.use_preset ? "none" : "flex"};flex-direction:column;gap:6px;">
-                                    <div class="stk-row"><label>API \u5730\u5740<input type="text" id="stk_api_url" class="text_pole" value="${sh.api_url || ""}" placeholder="http://localhost:1234/v1" /></label></div>
-                                    <div class="stk-row"><label>API \u5BC6\u94A5<input type="password" id="stk_api_key" class="text_pole" value="${sh.api_key || ""}" /></label></div>
-                                    <div class="stk-row"><label>\u6A21\u578B\u540D\u79F0<input type="text" id="stk_model_name" class="text_pole" value="${sh.model_name || ""}" /></label></div>
-                                    <div class="stk-row" style="gap:12px">
-                                        <label>\u6700\u5927token<input type="number" id="stk_max_tokens" class="text_pole" value="${sh.max_tokens}" min="256" max="8192" step="256" /></label>
-                                        <label>\u6E29\u5EA6<input type="number" id="stk_temperature" class="text_pole" value="${sh.temperature}" min="0" max="2" step="0.1" /></label>
-                                    </div>
-                                    <div class="stk-toggle">
-                                        <input type="checkbox" id="stk_stream" ${sh.stream ? "checked" : ""} />
-                                        <span>\u6D41\u5F0F\u4F20\u8F93</span>
-                                    </div>
-                                    <div class="stk-row" style="gap:8px;margin-top:4px">
-                                        <div class="stk-btn" id="stk_test_connection">\u6D4B\u8BD5\u8FDE\u63A5</div>
-                                        <div class="stk-btn" id="stk_fetch_models">\u83B7\u53D6\u6A21\u578B</div>
-                                    </div>
-                                    <div class="stk-row">
-                                        <label>\u6A21\u578B\u9009\u62E9
-                                            <select id="stk_model_select" class="text_pole">
-                                                <option value="">-- \u624B\u52A8\u8F93\u5165\u6216\u83B7\u53D6\u6A21\u578B\u5217\u8868 --</option>
-                                            </select>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- \u6A21\u677F\u63D0\u793A\u8BCD -->
-                <div class="stk-section">
-                    <div class="stk-section-header interactable collapsed" tabindex="0">
-                        <span>\u{1F4DD} \u6A21\u677F\u63D0\u793A\u8BCD\uFF08\u4E16\u754C\u4E66\uFF09</span>
-                        <span class="stk-arrow fa-solid fa-chevron-down"></span>
-                    </div>
-                    <div class="stk-section-body stk-hidden" id="stk_prompts_body">
-                        <div style="font-size:11px;opacity:.6;margin-bottom:4px;">\u63D0\u793A\u8BCD\u5B58\u50A8\u5728\u4E16\u754C\u4E66\u300C${Core.WORLD_BOOK}\u300D\u4E2D\uFF0C\u4FEE\u6539\u540E\u81EA\u52A8\u540C\u6B65\u3002</div>
-                        ${modules2.map((m) => {
+      }).join("");
+      const promptsHtml = modules2.map((m) => {
         if (!m.templatePrompts) return "";
         return Object.entries(m.templatePrompts).map(([key, def]) => `
-                                <div class="stk-sub-section">
-                                    <div class="stk-sub-header interactable" tabindex="0">
-                                        <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
-                                        ${m.name} - ${key}
-                                    </div>
-                                    <div class="stk-sub-body stk-hidden">
-                                        <textarea id="stk_prompt_${key}" class="text_pole" rows="8" style="font-family:monospace;font-size:11px;white-space:pre;resize:vertical">${_.escape(def)}</textarea>
-                                        <div class="stk-btn interactable stk_prompt_save" data-key="${key}" style="align-self:flex-end" tabindex="0">\u{1F4BE} \u4FDD\u5B58\u5230\u4E16\u754C\u4E66</div>
-                                    </div>
-                                </div>
-                            `).join("");
-      }).join("")}
+                <div class="stk-sub-section">
+                    <div class="stk-sub-header interactable" tabindex="0">
+                        <span class="stk-arrow fa-solid fa-chevron-down" style="font-size:10px"></span>
+                        ${m.name} - ${key}
+                    </div>
+                    <div class="stk-sub-body stk-hidden">
+                        <textarea id="stk_prompt_${key}" class="text_pole" rows="8" style="font-family:monospace;font-size:11px;white-space:pre;resize:vertical">${_.escape(def)}</textarea>
+                        <div class="stk-btn interactable stk_prompt_save" data-key="${key}" style="align-self:flex-end" tabindex="0">\u4FDD\u5B58\u5230\u4E16\u754C\u4E66</div>
                     </div>
                 </div>
-
-                <!-- \u5404\u6A21\u5757\u8BE6\u7EC6\u8BBE\u7F6E -->
-                ${modulePanelsHtml}
+            `).join("");
+      }).join("");
+      const navHtml = `
+            <div class="stk-nav-section">
+                <div class="stk-nav-title">\u6838\u5FC3</div>
+                <div class="stk-nav-btn active" data-tab="modules"><i class="fa-solid fa-puzzle-piece"></i><span>\u6A21\u5757\u7BA1\u7406</span></div>
+                <div class="stk-nav-btn" data-tab="api"><i class="fa-solid fa-plug"></i><span>API \u914D\u7F6E</span></div>
+                <div class="stk-nav-btn" data-tab="prompts"><i class="fa-solid fa-file-lines"></i><span>\u6A21\u677F\u63D0\u793A\u8BCD</span></div>
             </div>
-        </div>`;
-      $("body").append(panelHtml);
-      const togglePanel = () => {
-        $("#stk-panel, #stk-overlay").toggleClass("open");
-      };
-      topBtn.on("click", togglePanel);
-      $("#stk-panel-close, #stk-overlay").on("click", togglePanel);
-      $("#stk-panel").on("click", ".stk-section-header", function(e) {
+            <div class="stk-nav-section">
+                <div class="stk-nav-title">\u6A21\u5757\u8BBE\u7F6E</div>
+                ${modules2.map((m) => `
+                    <div class="stk-nav-btn" data-tab="module_${m.id}"><i class="fa-solid fa-cog"></i><span>${m.name}</span></div>
+                `).join("")}
+            </div>
+        `;
+      const contentHtml = `
+            <div class="stk-tab active" id="stk-tab-modules">
+                <h3 style="margin:0 0 12px;font-size:15px;color:var(--stk-text)">\u6A21\u5757\u7BA1\u7406</h3>
+                ${moduleOverviewHtml}
+            </div>
+            <div class="stk-tab" id="stk-tab-api">
+                <h3 style="margin:0 0 12px;font-size:15px;color:var(--stk-text)">API \u914D\u7F6E</h3>
+                <div class="stk-section">
+                    <div class="stk-section-body">
+                        <div class="stk-toggle">
+                            <input type="checkbox" id="stk_use_preset" ${sh.use_preset ? "checked" : ""} />
+                            <span>\u4F7F\u7528\u5F53\u524D\u9884\u8BBE</span>
+                        </div>
+                        <div id="stk_custom_api" style="display:${sh.use_preset ? "none" : "flex"};flex-direction:column;gap:8px;">
+                            <div class="stk-row"><label>API \u5730\u5740<input type="text" id="stk_api_url" class="text_pole" value="${sh.api_url || ""}" placeholder="http://localhost:1234/v1" /></label></div>
+                            <div class="stk-row"><label>API \u5BC6\u94A5<input type="password" id="stk_api_key" class="text_pole" value="${sh.api_key || ""}" /></label></div>
+                            <div class="stk-row"><label>\u6A21\u578B\u540D\u79F0<input type="text" id="stk_model_name" class="text_pole" value="${sh.model_name || ""}" /></label></div>
+                            <div class="stk-row" style="gap:12px">
+                                <label>\u6700\u5927token<input type="number" id="stk_max_tokens" class="text_pole" value="${sh.max_tokens}" min="256" max="8192" step="256" /></label>
+                                <label>\u6E29\u5EA6<input type="number" id="stk_temperature" class="text_pole" value="${sh.temperature}" min="0" max="2" step="0.1" /></label>
+                            </div>
+                            <div class="stk-toggle">
+                                <input type="checkbox" id="stk_stream" ${sh.stream ? "checked" : ""} />
+                                <span>\u6D41\u5F0F\u4F20\u8F93</span>
+                            </div>
+                            <div class="stk-row" style="gap:8px;margin-top:4px">
+                                <div class="stk-btn" id="stk_test_connection">\u6D4B\u8BD5\u8FDE\u63A5</div>
+                                <div class="stk-btn" id="stk_fetch_models">\u83B7\u53D6\u6A21\u578B</div>
+                            </div>
+                            <div class="stk-row">
+                                <label>\u6A21\u578B\u9009\u62E9
+                                    <select id="stk_model_select" class="text_pole">
+                                        <option value="">-- \u624B\u52A8\u8F93\u5165\u6216\u83B7\u53D6\u6A21\u578B\u5217\u8868 --</option>
+                                    </select>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="stk-tab" id="stk-tab-prompts">
+                <h3 style="margin:0 0 12px;font-size:15px;color:var(--stk-text)">\u6A21\u677F\u63D0\u793A\u8BCD</h3>
+                <div style="font-size:11px;opacity:.6;margin-bottom:12px;">\u63D0\u793A\u8BCD\u5B58\u50A8\u5728\u4E16\u754C\u4E66\u300C${Core.WORLD_BOOK}\u300D\u4E2D\uFF0C\u4FEE\u6539\u540E\u81EA\u52A8\u540C\u6B65\u3002</div>
+                ${promptsHtml}
+            </div>
+            ${modules2.map((m) => `
+                <div class="stk-tab" id="stk-tab-module_${m.id}">
+                    <h3 style="margin:0 0 12px;font-size:15px;color:var(--stk-text)">${m.name} \u8BBE\u7F6E</h3>
+                    <div id="stk_module_settings_${m.id}"></div>
+                </div>
+            `).join("")}
+        `;
+      const windowHtml = `
+            <div id="stk-window" style="left:${windowState.x}px;top:${windowState.y}px;width:${windowState.width}px;height:${windowState.height}px;">
+                <div id="stk-window-header">
+                    <div id="stk-window-title">
+                        <i class="fa-solid fa-toolbox"></i>
+                        <span>Smart Toolkit</span>
+                    </div>
+                    <div id="stk-window-controls">
+                        <div class="stk-window-btn maximize" title="\u6700\u5927\u5316"><i class="fa-solid fa-expand"></i></div>
+                        <div class="stk-window-btn close" title="\u5173\u95ED"><i class="fa-solid fa-times"></i></div>
+                    </div>
+                </div>
+                <div id="stk-layout">
+                    <div id="stk-nav">${navHtml}</div>
+                    <div id="stk-content">${contentHtml}</div>
+                </div>
+                <div class="stk-resize-handle se"></div>
+                <div class="stk-resize-handle e"></div>
+                <div class="stk-resize-handle s"></div>
+                <div class="stk-resize-handle w"></div>
+                <div class="stk-resize-handle n"></div>
+            </div>
+        `;
+      $("body").append(windowHtml);
+      modules2.forEach((m) => {
+        const ms = Core.getModuleSettings(m.id, m.defaultSettings);
+        $(`#stk_module_settings_${m.id}`).html(m.renderUI(ms));
+      });
+      this._bindWindowEvents();
+      this._bindModuleEvents(modules2, sh);
+      if (windowState.activeTab) {
+        this._switchTab(windowState.activeTab);
+      }
+    },
+    _switchTab(tabId) {
+      windowState.activeTab = tabId;
+      saveWindowState();
+      $(".stk-nav-btn").removeClass("active");
+      $(`.stk-nav-btn[data-tab="${tabId}"]`).addClass("active");
+      $(".stk-tab").removeClass("active");
+      $(`#stk-tab-${tabId}`).addClass("active");
+    },
+    _bindWindowEvents() {
+      const $win = $("#stk-window");
+      const $header = $("#stk-window-header");
+      $header.on("mousedown", (e) => {
+        if ($(e.target).closest(".stk-window-btn").length) return;
+        if (windowState.maximized) return;
+        const isDragging = true;
+        const startX = e.clientX - windowState.x;
+        const startY = e.clientY - windowState.y;
+        $(document).on("mousemove.stkdrag", (e2) => {
+          windowState.x = Math.max(0, Math.min(e2.clientX - startX, window.innerWidth - 100));
+          windowState.y = Math.max(0, Math.min(e2.clientY - startY, window.innerHeight - 100));
+          $win.css({ left: windowState.x, top: windowState.y });
+        });
+        $(document).on("mouseup.stkdrag", () => {
+          $(document).off(".stkdrag");
+          saveWindowState();
+        });
+      });
+      $(".stk-resize-handle").on("mousedown", (e) => {
+        if (windowState.maximized) return;
+        e.preventDefault();
+        const $handle = $(e.target);
+        const dir = $handle.hasClass("se") ? "se" : $handle.hasClass("e") ? "e" : $handle.hasClass("s") ? "s" : $handle.hasClass("w") ? "w" : "n";
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const startW = windowState.width;
+        const startH = windowState.height;
+        const startLeft = windowState.x;
+        const startTop = windowState.y;
+        $(document).on("mousemove.stkresize", (e2) => {
+          const dx = e2.clientX - startX;
+          const dy = e2.clientY - startY;
+          if (dir.includes("e")) {
+            windowState.width = Math.max(400, startW + dx);
+          }
+          if (dir.includes("w")) {
+            const newW = Math.max(400, startW - dx);
+            windowState.x = startLeft + startW - newW;
+            windowState.width = newW;
+          }
+          if (dir.includes("s")) {
+            windowState.height = Math.max(300, startH + dy);
+          }
+          if (dir.includes("n")) {
+            const newH = Math.max(300, startH - dy);
+            windowState.y = startTop + startH - newH;
+            windowState.height = newH;
+          }
+          $win.css({
+            left: windowState.x,
+            top: windowState.y,
+            width: windowState.width,
+            height: windowState.height
+          });
+        });
+        $(document).on("mouseup.stkresize", () => {
+          $(document).off(".stkresize");
+          saveWindowState();
+        });
+      });
+      $(".stk-window-btn.maximize").on("click", () => {
+        windowState.maximized = !windowState.maximized;
+        $win.toggleClass("maximized", windowState.maximized);
+        saveWindowState();
+      });
+      $(".stk-window-btn.close").on("click", () => this.hide());
+      $(".stk-nav-btn").on("click", (e) => {
+        const tabId = $(e.currentTarget).data("tab");
+        if (tabId) this._switchTab(tabId);
+      });
+      $("#stk-window").on("click", ".stk-section-header", function(e) {
         e.stopPropagation();
         $(this).toggleClass("collapsed").next(".stk-section-body").toggleClass("stk-hidden");
       });
-      $("#stk-panel").on("click", ".stk-sub-header", function(e) {
+      $("#stk-window").on("click", ".stk-sub-header", function(e) {
         e.stopPropagation();
         $(this).find(".stk-arrow").toggleClass("collapsed");
         $(this).next(".stk-sub-body").toggleClass("stk-hidden");
       });
+    },
+    _bindModuleEvents(modules2, sh) {
       const save = () => Core.saveSettings();
       $("#stk_use_preset").on("change", function() {
         sh.use_preset = this.checked;
@@ -1211,9 +1613,7 @@
               const id = typeof m === "string" ? m : m.id;
               $select.append(`<option value="${id}">${id}</option>`);
             });
-            if (sh.model_name) {
-              $select.val(sh.model_name);
-            }
+            if (sh.model_name) $select.val(sh.model_name);
             toastr.success(`\u83B7\u53D6\u5230 ${models.length} \u4E2A\u6A21\u578B`, "\u6210\u529F");
           } else {
             toastr.warning("\u672A\u83B7\u53D6\u5230\u6A21\u578B\u5217\u8868", "\u7ED3\u679C");
@@ -1231,7 +1631,7 @@
           save();
         }
       });
-      for (const m of modules2) {
+      modules2.forEach((m) => {
         const ms = Core.getModuleSettings(m.id, m.defaultSettings);
         $(`#stk_mod_${m.id}_enabled`).on("change", function() {
           ms.enabled = this.checked;
@@ -1243,17 +1643,17 @@
             save();
           });
         }
-      }
+      });
       $(".stk_prompt_save").on("click", async function() {
         const key = $(this).data("key");
         const content = $(`#stk_prompt_${key}`).val();
         await Core.setWorldBookEntry(key, content);
         toastr.success(`\u5DF2\u4FDD\u5B58\u5230\u4E16\u754C\u4E66`, key);
       });
-      for (const m of modules2) {
+      modules2.forEach((m) => {
         const ms = Core.getModuleSettings(m.id, m.defaultSettings);
         m.bindUI(ms, save);
-      }
+      });
     }
   };
 
@@ -1708,674 +2108,6 @@
   __publicField(_OptionsBarWindow, "_instance", null);
   var OptionsBarWindow = _OptionsBarWindow;
   var optionsBarWindow = OptionsBarWindow.getInstance();
-
-  // src/components/TabbedPanel.js
-  var TabbedPanel = class {
-    constructor(options) {
-      this.id = options.id || `stk-tabs-${Date.now()}`;
-      this.tabs = options.tabs || [];
-      this.activeTab = options.activeTab || null;
-      this.className = options.className || "";
-      this.onTabChange = options.onTabChange || null;
-      this.tabPosition = options.tabPosition || "top";
-      this.$el = null;
-      this.$tabList = null;
-      this.$tabContent = null;
-      this._tabContents = /* @__PURE__ */ new Map();
-    }
-    render() {
-      const positionClass = `stk-tabs-${this.tabPosition}`;
-      const customClass = this.className ? ` ${this.className}` : "";
-      const tabsHtml = this.tabs.map((tab) => {
-        const activeClass = tab.id === this.activeTab ? " stk-tab-active" : "";
-        const iconHtml = tab.icon ? `<span class="stk-tab-icon ${tab.icon}"></span>` : "";
-        const badgeHtml = tab.badge ? `<span class="stk-tab-badge">${tab.badge}</span>` : "";
-        return `
-                <button class="stk-tab${activeClass}" data-tab-id="${tab.id}" tabindex="0">
-                    ${iconHtml}
-                    <span class="stk-tab-label">${tab.label}</span>
-                    ${badgeHtml}
-                </button>
-            `;
-      }).join("");
-      const activeTabData = this.tabs.find((t) => t.id === this.activeTab) || this.tabs[0];
-      const initialContent = activeTabData?.content || "";
-      return `
-            <div class="stk-tabs ${positionClass}${customClass}" id="${this.id}">
-                <div class="stk-tab-list">${tabsHtml}</div>
-                <div class="stk-tab-content">${initialContent}</div>
-            </div>
-        `;
-    }
-    show(parentSelector = "body") {
-      if (this.$el) {
-        this.$el.removeClass("stk-tabs-hidden");
-        return;
-      }
-      if (!this.activeTab && this.tabs.length > 0) {
-        this.activeTab = this.tabs[0].id;
-      }
-      const html = this.render();
-      $(parentSelector).append(html);
-      this.$el = $(`#${this.id}`);
-      this.$tabList = this.$el.find(".stk-tab-list");
-      this.$tabContent = this.$el.find(".stk-tab-content");
-      this._bindEvents();
-    }
-    _bindEvents() {
-      this.$tabList.on("click", ".stk-tab", (e) => {
-        const $tab = $(e.currentTarget);
-        const tabId = $tab.data("tab-id");
-        this.switchTab(tabId);
-      });
-      this.$tabList.on("keydown", ".stk-tab", (e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          const $tab = $(e.currentTarget);
-          const tabId = $tab.data("tab-id");
-          this.switchTab(tabId);
-        }
-      });
-    }
-    switchTab(tabId) {
-      const tab = this.tabs.find((t) => t.id === tabId);
-      if (!tab) return;
-      this.activeTab = tabId;
-      this.$tabList.find(".stk-tab").removeClass("stk-tab-active");
-      this.$tabList.find(`[data-tab-id="${tabId}"]`).addClass("stk-tab-active");
-      let content = this._tabContents.get(tabId) || tab.content || "";
-      this.$tabContent.html(content);
-      if (this.onTabChange) {
-        this.onTabChange(tabId, tab);
-      }
-    }
-    setTabContent(tabId, content) {
-      this._tabContents.set(tabId, content);
-      const tab = this.tabs.find((t) => t.id === tabId);
-      if (tab) {
-        tab.content = content;
-      }
-      if (this.activeTab === tabId && this.$tabContent) {
-        this.$tabContent.html(content);
-      }
-    }
-    getTabContent(tabId) {
-      return this._tabContents.get(tabId) || this.tabs.find((t) => t.id === tabId)?.content || "";
-    }
-    addTab(tab) {
-      this.tabs.push(tab);
-      if (this.$tabList) {
-        const iconHtml = tab.icon ? `<span class="stk-tab-icon ${tab.icon}"></span>` : "";
-        const badgeHtml = tab.badge ? `<span class="stk-tab-badge">${tab.badge}</span>` : "";
-        const tabHtml = `
-                <button class="stk-tab" data-tab-id="${tab.id}" tabindex="0">
-                    ${iconHtml}
-                    <span class="stk-tab-label">${tab.label}</span>
-                    ${badgeHtml}
-                </button>
-            `;
-        this.$tabList.append(tabHtml);
-      }
-    }
-    removeTab(tabId) {
-      const index = this.tabs.findIndex((t) => t.id === tabId);
-      if (index === -1) return;
-      this.tabs.splice(index);
-      this._tabContents.delete(tabId);
-      if (this.$tabList) {
-        this.$tabList.find(`[data-tab-id="${tabId}"]`).remove();
-      }
-      if (this.activeTab === tabId && this.tabs.length > 0) {
-        this.switchTab(this.tabs[0].id);
-      }
-    }
-    updateTabBadge(tabId, badge) {
-      const tab = this.tabs.find((t) => t.id === tabId);
-      if (!tab) return;
-      tab.badge = badge;
-      if (this.$tabList) {
-        const $tab = this.$tabList.find(`[data-tab-id="${tabId}"]`);
-        let $badge = $tab.find(".stk-tab-badge");
-        if (badge) {
-          if ($badge.length === 0) {
-            $tab.append(`<span class="stk-tab-badge">${badge}</span>`);
-          } else {
-            $badge.text(badge);
-          }
-        } else {
-          $badge.remove();
-        }
-      }
-    }
-    updateTabLabel(tabId, label) {
-      const tab = this.tabs.find((t) => t.id === tabId);
-      if (!tab) return;
-      tab.label = label;
-      if (this.$tabList) {
-        this.$tabList.find(`[data-tab-id="${tabId}"] .stk-tab-label`).text(label);
-      }
-    }
-    hide() {
-      if (this.$el) {
-        this.$el.addClass("stk-tabs-hidden");
-      }
-    }
-    destroy() {
-      if (this.$el) {
-        this.$el.remove();
-        this.$el = null;
-        this.$tabList = null;
-        this.$tabContent = null;
-        this._tabContents.clear();
-      }
-    }
-    getActiveTab() {
-      return this.activeTab;
-    }
-    getActiveTabData() {
-      return this.tabs.find((t) => t.id === this.activeTab) || null;
-    }
-  };
-
-  // src/managers/DatabaseManager.js
-  var TABLE_ORDER_FIELD = "orderNo";
-  var _allChatMessages = [];
-  var _currentTableData = null;
-  function logDebug(...args) {
-    console.log("[DatabaseManager]", ...args);
-  }
-  function logWarn(...args) {
-    console.warn("[DatabaseManager]", ...args);
-  }
-  function logError(...args) {
-    console.error("[DatabaseManager]", ...args);
-  }
-  var DatabaseManager = class {
-    static get TABLE_ORDER_FIELD() {
-      return TABLE_ORDER_FIELD;
-    }
-    static get currentData() {
-      return _currentTableData;
-    }
-    static set currentData(data) {
-      _currentTableData = data;
-    }
-    static async loadAllChatMessages() {
-      const context = SillyTavern?.getContext?.();
-      if (!context) {
-        logWarn("SillyTavern context not available");
-        _allChatMessages = [];
-        return [];
-      }
-      try {
-        const chat = context.chat;
-        if (!chat || chat.length === 0) {
-          _allChatMessages = [];
-          logDebug("No chat messages");
-          return [];
-        }
-        _allChatMessages = chat.map((msg, idx) => ({ ...msg, id: idx }));
-        logDebug(`Loaded ${_allChatMessages.length} messages`);
-        return _allChatMessages;
-      } catch (error) {
-        logError("Failed to load chat messages:", error);
-        _allChatMessages = [];
-        return [];
-      }
-    }
-    static getChatMessages() {
-      return _allChatMessages;
-    }
-    static async mergeAllIndependentTables(isolationKey = "", settings = {}) {
-      const context = SillyTavern?.getContext?.();
-      const chat = context?.chat;
-      if (!chat || chat.length === 0) {
-        logDebug("Cannot merge data: Chat history is empty");
-        return null;
-      }
-      const mergedData = {};
-      const foundSheets = {};
-      const tableStates = {};
-      for (let i = chat.length - 1; i >= 0; i--) {
-        const message = chat[i];
-        if (message.is_user) continue;
-        if (message.TavernDB_STK_IsolatedData?.[isolationKey]) {
-          const tagData = message.TavernDB_STK_IsolatedData[isolationKey];
-          const independentData = tagData.independentData || {};
-          const modifiedKeys = tagData.modifiedKeys || [];
-          Object.keys(independentData).forEach((sheetKey) => {
-            if (!foundSheets[sheetKey]) {
-              mergedData[sheetKey] = JSON.parse(JSON.stringify(independentData[sheetKey]));
-              foundSheets[sheetKey] = true;
-              if (modifiedKeys.includes(sheetKey)) {
-                if (!tableStates[sheetKey]) tableStates[sheetKey] = {};
-                const currentAiFloor = chat.slice(0, i + 1).filter((m) => !m.is_user).length;
-                tableStates[sheetKey].lastUpdatedAiFloor = currentAiFloor;
-              }
-            }
-          });
-        }
-        if (message.TavernDB_STK_Data && this._matchesIsolation(message, isolationKey, settings)) {
-          const data = message.TavernDB_STK_Data;
-          Object.keys(data).forEach((k) => {
-            if (k.startsWith("sheet_") && !foundSheets[k] && data[k]?.name) {
-              mergedData[k] = JSON.parse(JSON.stringify(data[k]));
-              foundSheets[k] = true;
-            }
-          });
-        }
-      }
-      const foundCount = Object.keys(foundSheets).length;
-      logDebug(`Found ${foundCount} tables for isolation key [${isolationKey || "default"}]`);
-      if (foundCount <= 0) return null;
-      return mergedData;
-    }
-    static _matchesIsolation(message, isolationKey, settings) {
-      const msgIdentity = message.TavernDB_STK_Identity;
-      if (settings.dataIsolationEnabled) {
-        return msgIdentity === settings.dataIsolationCode;
-      }
-      return !msgIdentity;
-    }
-    static getSortedSheetKeys(dataObj, options = {}) {
-      const { ignoreChatGuide = false, includeMissingFromGuide = false } = options;
-      if (!dataObj || typeof dataObj !== "object") return [];
-      const existingKeys = Object.keys(dataObj).filter((k) => k.startsWith("sheet_"));
-      if (existingKeys.length === 0) return [];
-      return existingKeys.sort((a, b) => {
-        const ao = this._getOrderValue(dataObj, a);
-        const bo = this._getOrderValue(dataObj, b);
-        if (ao !== bo) return ao - bo;
-        const an = String(dataObj[a]?.name || a);
-        const bn = String(dataObj[b]?.name || b);
-        return an.localeCompare(bn);
-      });
-    }
-    static _getOrderValue(dataObj, key) {
-      const v = dataObj?.[key]?.[TABLE_ORDER_FIELD];
-      if (Number.isFinite(v)) return Math.trunc(v);
-      return Infinity;
-    }
-    static reorderDataBySheetKeys(dataObj, orderedSheetKeys) {
-      if (!dataObj || typeof dataObj !== "object") return dataObj;
-      const out = {};
-      Object.keys(dataObj).forEach((k) => {
-        if (!k.startsWith("sheet_")) out[k] = dataObj[k];
-      });
-      const keys = Array.isArray(orderedSheetKeys) ? orderedSheetKeys : this.getSortedSheetKeys(dataObj);
-      keys.forEach((k) => {
-        if (dataObj[k]) out[k] = dataObj[k];
-      });
-      return out;
-    }
-    static ensureSheetOrderNumbers(dataObj, options = {}) {
-      const { baseOrderKeys = null, forceRebuild = false } = options;
-      if (!dataObj || typeof dataObj !== "object") return;
-      const existingKeys = Object.keys(dataObj).filter((k) => k.startsWith("sheet_"));
-      if (existingKeys.length === 0) return;
-      const needsNumbering = forceRebuild || existingKeys.some((k) => {
-        const v = dataObj[k]?.[TABLE_ORDER_FIELD];
-        return !Number.isFinite(v);
-      });
-      if (!needsNumbering) return;
-      const baseKeys = baseOrderKeys || existingKeys;
-      baseKeys.forEach((k, idx) => {
-        if (dataObj[k] && typeof dataObj[k] === "object") {
-          dataObj[k][TABLE_ORDER_FIELD] = idx + 1;
-        }
-      });
-      existingKeys.forEach((k) => {
-        if (!baseKeys.includes(k) && dataObj[k] && typeof dataObj[k] === "object") {
-          const maxOrder = Math.max(0, ...existingKeys.filter((sk) => baseKeys.includes(sk)).map((sk) => dataObj[sk]?.[TABLE_ORDER_FIELD] || 0));
-          dataObj[k][TABLE_ORDER_FIELD] = maxOrder + 1;
-        }
-      });
-    }
-    static sanitizeSheetForStorage(sheet) {
-      if (!sheet || typeof sheet !== "object") return sheet;
-      const KEEP_KEYS = /* @__PURE__ */ new Set([
-        "uid",
-        "name",
-        "sourceData",
-        "content",
-        "updateConfig",
-        "exportConfig",
-        TABLE_ORDER_FIELD
-      ]);
-      const out = {};
-      KEEP_KEYS.forEach((k) => {
-        if (sheet[k] !== void 0) out[k] = sheet[k];
-      });
-      if (!out.name && sheet.name) out.name = sheet.name;
-      if (!out.content && Array.isArray(sheet.content)) out.content = sheet.content;
-      if (!out.sourceData && sheet.sourceData) out.sourceData = sheet.sourceData;
-      return out;
-    }
-    static sanitizeChatSheetsObject(dataObj, options = {}) {
-      const { ensureMate = false } = options;
-      if (!dataObj || typeof dataObj !== "object") return dataObj;
-      const out = {};
-      Object.keys(dataObj).forEach((k) => {
-        if (k.startsWith("sheet_")) {
-          out[k] = this.sanitizeSheetForStorage(dataObj[k]);
-        } else if (k === "mate") {
-          out.mate = dataObj.mate;
-        } else {
-          out[k] = dataObj[k];
-        }
-      });
-      if (ensureMate) {
-        if (!out.mate || typeof out.mate !== "object") {
-          out.mate = { type: "chatSheets", version: 1 };
-        }
-        if (!out.mate.type) out.mate.type = "chatSheets";
-        if (!out.mate.version) out.mate.version = 1;
-      }
-      return out;
-    }
-    static validateTableData(data) {
-      if (!data || typeof data !== "object") return { valid: false, errors: ["No data provided"] };
-      const errors = [];
-      const sheetKeys = Object.keys(data).filter((k) => k.startsWith("sheet_"));
-      sheetKeys.forEach((key) => {
-        const sheet = data[key];
-        if (!sheet.name) {
-          errors.push(`Sheet ${key}: missing name`);
-        }
-        if (!Array.isArray(sheet.content)) {
-          errors.push(`Sheet ${key}: content is not an array`);
-        }
-      });
-      return { valid: errors.length === 0, errors };
-    }
-    static extractTableEdits(message) {
-      const text = message?.mes || message?.message || "";
-      if (!text) return null;
-      const tableEditRegex = /<tableEdit\s+name="([^"]+)"[^>]*>([\s\S]*?)<\/tableEdit>/gi;
-      const edits = [];
-      let match;
-      while ((match = tableEditRegex.exec(text)) !== null) {
-        const tableName = match[1];
-        const content = match[2].trim();
-        edits.push({ tableName, content });
-      }
-      return edits.length > 0 ? edits : null;
-    }
-    static parseTableEditContent(content) {
-      const lines = content.split("\n").map((l) => l.trim()).filter((l) => l);
-      return lines.map((line) => {
-        const cells = line.split("|").map((c) => c.trim()).filter((c) => c);
-        return cells;
-      }).filter((row) => row.length > 0);
-    }
-    static applyTableEdits(edits, tableData) {
-      if (!edits || !tableData) return tableData;
-      const result = JSON.parse(JSON.stringify(tableData));
-      edits.forEach((edit) => {
-        const sheetKey = Object.keys(result).find(
-          (k) => k.startsWith("sheet_") && result[k]?.name === edit.tableName
-        );
-        if (sheetKey && result[sheetKey]) {
-          const parsedContent = this.parseTableEditContent(edit.content);
-          if (parsedContent.length > 0) {
-            const existingHeader = result[sheetKey].content?.[0] || [];
-            const hasHeaderRow = existingHeader.length > 0;
-            if (hasHeaderRow) {
-              const headerLength = existingHeader.length;
-              result[sheetKey].content = [existingHeader, ...parsedContent.map((row) => {
-                while (row.length < headerLength) row.push("");
-                return row.slice(0, headerLength);
-              })];
-            } else {
-              result[sheetKey].content = parsedContent;
-            }
-          }
-        }
-      });
-      return result;
-    }
-    static convertTableToText(tableData, options = {}) {
-      const { includeHeaders = true, separator = " | ", rowSeparator = "\n" } = options;
-      if (!tableData || !Array.isArray(tableData)) return "";
-      return tableData.map((row, idx) => {
-        if (!includeHeaders && idx === 0) return null;
-        if (!Array.isArray(row)) return null;
-        return row.map((cell) => String(cell ?? "")).join(separator);
-      }).filter(Boolean).join(rowSeparator);
-    }
-    static async refresh(isolationKey = "", settings = {}) {
-      await this.loadAllChatMessages();
-      const freshData = await this.mergeAllIndependentTables(isolationKey, settings);
-      if (freshData) {
-        const stableKeys = this.getSortedSheetKeys(freshData);
-        _currentTableData = this.reorderDataBySheetKeys(freshData, stableKeys);
-      } else {
-        _currentTableData = null;
-      }
-      return _currentTableData;
-    }
-  };
-
-  // src/components/DatabaseVisualizer.js
-  var DatabaseVisualizer = class {
-    constructor(options) {
-      this.id = options.id || `stk-db-viz-${Date.now()}`;
-      this.isolationKey = options.isolationKey || null;
-      this.className = options.className || "";
-      this.onTableSelect = options.onTableSelect || null;
-      this.onDataChange = options.onDataChange || null;
-      this.$el = null;
-      this.$tableList = null;
-      this.$editor = null;
-      this._data = null;
-      this._sortedKeys = [];
-      this._selectedSheetKey = null;
-      this._expandedSheets = /* @__PURE__ */ new Set();
-    }
-    render() {
-      const customClass = this.className ? ` ${this.className}` : "";
-      return `
-            <div class="stk-db-visualizer${customClass}" id="${this.id}">
-                <div class="stk-db-toolbar">
-                    <button class="stk-db-btn stk-db-refresh interactable" title="\u5237\u65B0\u6570\u636E">
-                        <span class="fa-solid fa-rotate"></span>
-                    </button>
-                    <button class="stk-db-btn stk-db-expand-all interactable" title="\u5C55\u5F00\u5168\u90E8">
-                        <span class="fa-solid fa-expand"></span>
-                    </button>
-                    <button class="stk-db-btn stk-db-collapse-all interactable" title="\u6298\u53E0\u5168\u90E8">
-                        <span class="fa-solid fa-compress"></span>
-                    </button>
-                    <span class="stk-db-info"></span>
-                </div>
-                <div class="stk-db-body">
-                    <div class="stk-db-sidebar">
-                        <div class="stk-db-table-list"></div>
-                    </div>
-                    <div class="stk-db-content">
-                        <div class="stk-db-editor"></div>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-    async show(parentSelector = "body") {
-      if (this.$el) {
-        this.$el.removeClass("stk-db-hidden");
-        await this.refresh();
-        return;
-      }
-      const html = this.render();
-      $(parentSelector).append(html);
-      this.$el = $(`#${this.id}`);
-      this.$tableList = this.$el.find(".stk-db-table-list");
-      this.$editor = this.$el.find(".stk-db-editor");
-      this._bindEvents();
-      await this.refresh();
-    }
-    _bindEvents() {
-      this.$el.on("click", ".stk-db-refresh", () => this.refresh());
-      this.$el.on("click", ".stk-db-expand-all", () => this._expandAll());
-      this.$el.on("click", ".stk-db-collapse-all", () => this._collapseAll());
-      this.$tableList.on("click", ".stk-db-table-header", (e) => {
-        const $header = $(e.currentTarget);
-        const sheetKey = $header.data("sheet-key");
-        this._toggleSheet(sheetKey);
-      });
-      this.$tableList.on("click", ".stk-db-table-item", (e) => {
-        const $item = $(e.currentTarget);
-        const sheetKey = $item.data("sheet-key");
-        this._selectSheet(sheetKey);
-      });
-    }
-    async refresh() {
-      const key = this.isolationKey || storage.getIsolationKey();
-      this._data = await DatabaseManager.mergeAllIndependentTables(key);
-      if (this._data) {
-        this._sortedKeys = DatabaseManager.getSortedSheetKeys(this._data);
-      } else {
-        this._sortedKeys = [];
-      }
-      this._renderTableList();
-      this._updateInfo();
-      if (this.onDataChange) {
-        this.onDataChange(this._data);
-      }
-    }
-    _renderTableList() {
-      if (!this._sortedKeys.length) {
-        this.$tableList.html('<div class="stk-db-empty">\u6682\u65E0\u6570\u636E\u8868</div>');
-        return;
-      }
-      const html = this._sortedKeys.map((sheetKey) => {
-        const sheetData = this._data[sheetKey];
-        const name = sheetData?.name || sheetKey;
-        const orderNo = sheetData?.orderNo ?? 999;
-        const isExpanded = this._expandedSheets.has(sheetKey);
-        const isSelected = this._selectedSheetKey === sheetKey;
-        const expandIcon = isExpanded ? "fa-chevron-down" : "fa-chevron-right";
-        const fields = this._extractFields(sheetData);
-        const fieldsHtml = isExpanded ? fields.map((f) => `
-                <div class="stk-db-field" data-field="${f}">
-                    <span class="fa-solid fa-minus"></span>
-                    <span class="stk-db-field-name">${f}</span>
-                </div>
-            `).join("") : "";
-        return `
-                <div class="stk-db-table${isSelected ? " stk-db-selected" : ""}" data-sheet-key="${sheetKey}">
-                    <div class="stk-db-table-header interactable" data-sheet-key="${sheetKey}">
-                        <span class="fa-solid ${expandIcon} stk-db-expand-icon"></span>
-                        <span class="stk-db-table-name">${name}</span>
-                        <span class="stk-db-table-order">#${orderNo}</span>
-                    </div>
-                    <div class="stk-db-table-fields">${fieldsHtml}</div>
-                </div>
-            `;
-      }).join("");
-      this.$tableList.html(html);
-    }
-    _extractFields(sheetData) {
-      if (!sheetData || typeof sheetData !== "object") return [];
-      const excludeKeys = ["name", "orderNo", "created", "modified"];
-      return Object.keys(sheetData).filter((k) => !excludeKeys.includes(k) && !k.startsWith("_"));
-    }
-    _toggleSheet(sheetKey) {
-      if (this._expandedSheets.has(sheetKey)) {
-        this._expandedSheets.delete(sheetKey);
-      } else {
-        this._expandedSheets.add(sheetKey);
-      }
-      this._renderTableList();
-    }
-    _expandAll() {
-      this._sortedKeys.forEach((key) => this._expandedSheets.add(key));
-      this._renderTableList();
-    }
-    _collapseAll() {
-      this._expandedSheets.clear();
-      this._renderTableList();
-    }
-    _selectSheet(sheetKey) {
-      this._selectedSheetKey = sheetKey;
-      this._renderTableList();
-      this._renderEditor(sheetKey);
-      if (this.onTableSelect) {
-        this.onTableSelect(sheetKey, this._data?.[sheetKey]);
-      }
-    }
-    _renderEditor(sheetKey) {
-      const sheetData = this._data?.[sheetKey];
-      if (!sheetData) {
-        this.$editor.html('<div class="stk-db-empty">\u8BF7\u9009\u62E9\u4E00\u4E2A\u6570\u636E\u8868</div>');
-        return;
-      }
-      const fields = this._extractFields(sheetData);
-      const name = sheetData.name || sheetKey;
-      const orderNo = sheetData.orderNo ?? 999;
-      const fieldsHtml = fields.map((f) => {
-        const value = sheetData[f];
-        const displayValue = this._formatValue(value);
-        const inputType = typeof value === "object" ? "textarea" : "text";
-        return `
-                <div class="stk-db-edit-field">
-                    <label class="stk-db-edit-label">${f}</label>
-                    ${inputType === "textarea" ? `<textarea class="stk-db-edit-input stk-db-edit-textarea" data-field="${f}">${displayValue}</textarea>` : `<input type="${inputType}" class="stk-db-edit-input" data-field="${f}" value="${displayValue}">`}
-                </div>
-            `;
-      }).join("");
-      this.$editor.html(`
-            <div class="stk-db-edit-header">
-                <span class="stk-db-edit-title">${name}</span>
-                <span class="stk-db-edit-order">\u987A\u5E8F: ${orderNo}</span>
-            </div>
-            <div class="stk-db-edit-fields">${fieldsHtml}</div>
-            <div class="stk-db-edit-actions">
-                <button class="stk-db-btn stk-db-save interactable">\u4FDD\u5B58</button>
-                <button class="stk-db-btn stk-db-cancel interactable">\u53D6\u6D88</button>
-            </div>
-        `);
-    }
-    _formatValue(value) {
-      if (value === null || value === void 0) return "";
-      if (typeof value === "object") {
-        try {
-          return JSON.stringify(value, null, 2);
-        } catch {
-          return String(value);
-        }
-      }
-      return String(value);
-    }
-    _updateInfo() {
-      const count = this._sortedKeys.length;
-      const key = this.isolationKey || storage.getIsolationKey();
-      this.$el.find(".stk-db-info").text(`\u5171 ${count} \u4E2A\u8868 | \u9694\u79BB\u952E: ${key || "\u9ED8\u8BA4"}`);
-    }
-    getData() {
-      return this._data;
-    }
-    getSortedKeys() {
-      return this._sortedKeys;
-    }
-    getSelectedSheet() {
-      return this._selectedSheetKey;
-    }
-    hide() {
-      if (this.$el) {
-        this.$el.addClass("stk-db-hidden");
-      }
-    }
-    destroy() {
-      if (this.$el) {
-        this.$el.remove();
-        this.$el = null;
-        this.$tableList = null;
-        this.$editor = null;
-        this._data = null;
-        this._sortedKeys = [];
-      }
-    }
-  };
 
   // src/modules/statusbar.js
   var STATUS_REGEX = /<StatusBlock>([\s\S]*?)<\/StatusBlock>/i;
@@ -3304,954 +3036,8 @@ Format:
     }
   };
 
-  // src/managers/TableLogicManager.js
-  var LOG_PREFIX = "[TableLogic]";
-  function logDebug2(...args) {
-    console.log(LOG_PREFIX, ...args);
-  }
-  var _TableLogicManager = class _TableLogicManager {
-    static getInstance() {
-      if (!_TableLogicManager._instance) {
-        _TableLogicManager._instance = new _TableLogicManager();
-      }
-      return _TableLogicManager._instance;
-    }
-    constructor() {
-      this._auditLog = [];
-      this._pendingCommands = [];
-      this._maxAuditLogSize = 100;
-    }
-    async getCurrentData() {
-      const isolationKey = storage.getIsolationKey();
-      return await DatabaseManager.mergeAllIndependentTables(isolationKey);
-    }
-    async getTable(sheetKey) {
-      const data = await this.getCurrentData();
-      return data?.[sheetKey] || null;
-    }
-    async updateTable(sheetKey, updates, options = {}) {
-      const { reason = "update", skipAudit = false } = options;
-      const context = SillyTavern?.getContext?.();
-      const chat = context?.chat;
-      if (!chat || chat.length === 0) {
-        logDebug2("Cannot update table: No chat history");
-        return false;
-      }
-      const existingData = await this.getTable(sheetKey);
-      const newData = {
-        ...existingData,
-        ...updates,
-        modified: Date.now()
-      };
-      const isolationKey = storage.getIsolationKey();
-      const lastAiMessage = this._findLastAiMessage(chat);
-      if (!lastAiMessage) {
-        logDebug2("Cannot update table: No AI message found");
-        return false;
-      }
-      if (!lastAiMessage.TavernDB_STK_IsolatedData) {
-        lastAiMessage.TavernDB_STK_IsolatedData = {};
-      }
-      if (!lastAiMessage.TavernDB_STK_IsolatedData[isolationKey]) {
-        lastAiMessage.TavernDB_STK_IsolatedData[isolationKey] = {
-          independentData: {},
-          modifiedKeys: []
-        };
-      }
-      const tagData = lastAiMessage.TavernDB_STK_IsolatedData[isolationKey];
-      tagData.independentData[sheetKey] = newData;
-      if (!tagData.modifiedKeys.includes(sheetKey)) {
-        tagData.modifiedKeys.push(sheetKey);
-      }
-      if (!skipAudit) {
-        this._addAuditEntry({
-          action: "updateTable",
-          sheetKey,
-          reason,
-          timestamp: Date.now()
-        });
-      }
-      logDebug2(`Table updated: ${sheetKey}`);
-      return true;
-    }
-    async createTable(sheetKey, tableData, options = {}) {
-      const { name, orderNo, ...restData } = tableData;
-      const newData = {
-        name: name || sheetKey,
-        orderNo: orderNo ?? Date.now(),
-        created: Date.now(),
-        ...restData
-      };
-      return await this.updateTable(sheetKey, newData, { ...options, reason: "create" });
-    }
-    async deleteTable(sheetKey, options = {}) {
-      const context = SillyTavern?.getContext?.();
-      const chat = context?.chat;
-      if (!chat || chat.length === 0) {
-        return false;
-      }
-      const isolationKey = storage.getIsolationKey();
-      const lastAiMessage = this._findLastAiMessage(chat);
-      if (!lastAiMessage?.TavernDB_STK_IsolatedData?.[isolationKey]) {
-        return false;
-      }
-      const tagData = lastAiMessage.TavernDB_STK_IsolatedData[isolationKey];
-      if (tagData.independentData?.[sheetKey]) {
-        delete tagData.independentData[sheetKey];
-      }
-      const modIndex = tagData.modifiedKeys?.indexOf(sheetKey);
-      if (modIndex > -1) {
-        tagData.modifiedKeys.splice(modIndex, 1);
-      }
-      this._addAuditEntry({
-        action: "deleteTable",
-        sheetKey,
-        reason: options.reason || "delete",
-        timestamp: Date.now()
-      });
-      logDebug2(`Table deleted: ${sheetKey}`);
-      return true;
-    }
-    async updateField(sheetKey, fieldName, value, options = {}) {
-      const table = await this.getTable(sheetKey);
-      if (!table) {
-        logDebug2(`Table not found: ${sheetKey}`);
-        return false;
-      }
-      const updates = { [fieldName]: value };
-      return await this.updateTable(sheetKey, updates, options);
-    }
-    async reorderTable(sheetKey, newOrderNo, options = {}) {
-      const table = await this.getTable(sheetKey);
-      if (!table) return false;
-      return await this.updateTable(sheetKey, { orderNo: newOrderNo }, { ...options, reason: "reorder" });
-    }
-    async batchUpdate(updates, options = {}) {
-      const results = [];
-      for (const update of updates) {
-        const { sheetKey, data } = update;
-        const result = await this.updateTable(sheetKey, data, { ...options, skipAudit: true });
-        results.push({ sheetKey, success: result });
-      }
-      this._addAuditEntry({
-        action: "batchUpdate",
-        count: updates.length,
-        reason: options.reason || "batch",
-        timestamp: Date.now()
-      });
-      return results;
-    }
-    parseTableEditCommand(text) {
-      const patterns = [
-        /\[表格编辑\]([\s\S]*?)\[\/表格编辑\]/i,
-        /\[TABLE_EDIT\]([\s\S]*?)\[\/TABLE_EDIT\]/i,
-        /```table_edit\n([\s\S]*?)```/i
-      ];
-      for (const pattern of patterns) {
-        const match = text.match(pattern);
-        if (match) {
-          return this._parseEditContent(match[1].trim());
-        }
-      }
-      return null;
-    }
-    _parseEditContent(content) {
-      const commands = [];
-      const lines = content.split("\n");
-      let currentCommand = null;
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-        if (trimmed.startsWith("#") || trimmed.startsWith("//")) continue;
-        const actionMatch = trimmed.match(/^\[(\w+)\]$/);
-        if (actionMatch) {
-          if (currentCommand) {
-            commands.push(currentCommand);
-          }
-          currentCommand = { action: actionMatch[1].toLowerCase(), data: {} };
-          continue;
-        }
-        if (currentCommand) {
-          const kvMatch = trimmed.match(/^([^:]+):\s*(.*)$/);
-          if (kvMatch) {
-            const key = kvMatch[1].trim();
-            let value = kvMatch[2].trim();
-            if (value.startsWith("{") || value.startsWith("[")) {
-              try {
-                value = JSON.parse(value);
-              } catch {
-              }
-            } else if (value === "true") {
-              value = true;
-            } else if (value === "false") {
-              value = false;
-            } else if (!isNaN(Number(value))) {
-              value = Number(value);
-            }
-            currentCommand.data[key] = value;
-          }
-        }
-      }
-      if (currentCommand) {
-        commands.push(currentCommand);
-      }
-      return commands;
-    }
-    async executeCommands(commands, options = {}) {
-      const results = [];
-      for (const cmd of commands) {
-        let result = { action: cmd.action, success: false };
-        try {
-          switch (cmd.action) {
-            case "update":
-            case "set":
-              result.success = await this.updateTable(
-                cmd.data.sheetKey,
-                cmd.data.updates || cmd.data,
-                options
-              );
-              break;
-            case "create":
-            case "add":
-              result.success = await this.createTable(
-                cmd.data.sheetKey,
-                cmd.data,
-                options
-              );
-              break;
-            case "delete":
-            case "remove":
-              result.success = await this.deleteTable(
-                cmd.data.sheetKey,
-                options
-              );
-              break;
-            case "reorder":
-              result.success = await this.reorderTable(
-                cmd.data.sheetKey,
-                cmd.data.orderNo,
-                options
-              );
-              break;
-            default:
-              logDebug2(`Unknown command action: ${cmd.action}`);
-          }
-        } catch (err) {
-          logDebug2(`Command execution error:`, err);
-          result.error = err.message;
-        }
-        results.push(result);
-      }
-      return results;
-    }
-    _findLastAiMessage(chat) {
-      for (let i = chat.length - 1; i >= 0; i--) {
-        if (!chat[i].is_user) {
-          return chat[i];
-        }
-      }
-      return null;
-    }
-    _addAuditEntry(entry) {
-      this._auditLog.push(entry);
-      if (this._auditLog.length > this._maxAuditLogSize) {
-        this._auditLog = this._auditLog.slice(-this._maxAuditLogSize);
-      }
-    }
-    getAuditLog(limit = 50) {
-      return this._auditLog.slice(-limit);
-    }
-    clearAuditLog() {
-      this._auditLog = [];
-    }
-    generatePromptTemplate(sheetKeys, options = {}) {
-      const { includeFields = true, format = "standard" } = options;
-      if (format === "compact") {
-        return this._generateCompactTemplate(sheetKeys);
-      }
-      const data = this.getCurrentData();
-      const tablesSection = sheetKeys.map((key) => {
-        const table = data?.[key];
-        if (!table) return "";
-        const name = table.name || key;
-        const fields = Object.keys(table).filter(
-          (k) => !["name", "orderNo", "created", "modified"].includes(k)
-        );
-        let content = `[${name}]
-`;
-        if (includeFields && fields.length > 0) {
-          fields.forEach((f) => {
-            content += `${f}: ${table[f]}
-`;
-          });
-        }
-        return content;
-      }).filter(Boolean).join("\n");
-      return `[\u8868\u683C\u7F16\u8F91]
-// \u4F7F\u7528\u4EE5\u4E0B\u683C\u5F0F\u7F16\u8F91\u8868\u683C:
-// [update] \u6216 [set] - \u66F4\u65B0\u8868\u683C
-// [create] \u6216 [add] - \u521B\u5EFA\u65B0\u8868\u683C
-// [delete] \u6216 [remove] - \u5220\u9664\u8868\u683C
-
-// \u793A\u4F8B:
-// [update]
-// sheetKey: sheet_001
-// \u5B57\u6BB5\u540D: \u65B0\u503C
-
-\u5F53\u524D\u8868\u683C\u6570\u636E:
-${tablesSection}
-[/\u8868\u683C\u7F16\u8F91]`;
-    }
-    _generateCompactTemplate(sheetKeys) {
-      return `[TABLE_EDIT]
-// action: update|create|delete
-// sheetKey: target_sheet
-// field: value
-[/TABLE_EDIT]`;
-    }
-  };
-  __publicField(_TableLogicManager, "_instance", null);
-  var TableLogicManager = _TableLogicManager;
-  var tableLogic = TableLogicManager.getInstance();
-
-  // src/managers/PlotAdvanceManager.js
-  var _PlotAdvanceManager = class _PlotAdvanceManager {
-    static getInstance() {
-      if (!_PlotAdvanceManager._instance) {
-        _PlotAdvanceManager._instance = new _PlotAdvanceManager();
-      }
-      return _PlotAdvanceManager._instance;
-    }
-    constructor() {
-      this._defaultSettings = {
-        memoryRecallCount: 5,
-        enableLoop: true,
-        maxLoops: 3,
-        selectedWorldbooks: [],
-        customPromptTemplate: "",
-        enableAutoTrigger: false,
-        triggerKeywords: []
-      };
-    }
-    getSettings() {
-      const defaults = this._defaultSettings;
-      return storage.getProfileSettings(null, defaults);
-    }
-    saveSettings(settings) {
-      storage.setProfileSettings(null, settings);
-    }
-    async generatePlotPrompt(options = {}) {
-      const settings = this.getSettings();
-      const {
-        includeMemory = true,
-        includeTables = true,
-        selectedSheets = [],
-        loopIndex = 0
-      } = options;
-      const parts = [];
-      if (includeMemory) {
-        const memoryContent = await this._buildMemorySection(settings.memoryRecallCount);
-        if (memoryContent) {
-          parts.push(memoryContent);
-        }
-      }
-      if (includeTables) {
-        const tableContent = await this._buildTableSection(selectedSheets);
-        if (tableContent) {
-          parts.push(tableContent);
-        }
-      }
-      const worldbookContent = await this._buildWorldbookSection(settings.selectedWorldbooks);
-      if (worldbookContent) {
-        parts.push(worldbookContent);
-      }
-      if (settings.customPromptTemplate) {
-        parts.push(this._processCustomTemplate(settings.customPromptTemplate, loopIndex));
-      }
-      return parts.filter(Boolean).join("\n\n");
-    }
-    async _buildMemorySection(count) {
-      const context = SillyTavern?.getContext?.();
-      const chat = context?.chat;
-      if (!chat || chat.length === 0) {
-        return "";
-      }
-      const messages = [];
-      const startIndex = Math.max(0, chat.length - count);
-      for (let i = startIndex; i < chat.length; i++) {
-        const msg = chat[i];
-        const role = msg.is_user ? "\u7528\u6237" : "AI";
-        const content = msg.mes || "";
-        messages.push(`[${role}]: ${content}`);
-      }
-      if (messages.length === 0) return "";
-      return `[\u8BB0\u5FC6\u56DE\u6EAF]
-\u6700\u8FD1 ${messages.length} \u6761\u6D88\u606F:
-${messages.join("\n")}
-[/\u8BB0\u5FC6\u56DE\u6EAF]`;
-    }
-    async _buildTableSection(selectedSheets) {
-      const data = await this.getCurrentData();
-      if (!data) return "";
-      const keys = selectedSheets.length > 0 ? selectedSheets : DatabaseManager.getSortedSheetKeys(data);
-      if (keys.length === 0) return "";
-      const tables = keys.map((key) => {
-        const table = data[key];
-        if (!table) return "";
-        const name = table.name || key;
-        const fields = Object.entries(table).filter(([k]) => !["name", "orderNo", "created", "modified"].includes(k)).map(([k, v]) => `${k}: ${this._formatValue(v)}`);
-        return `[${name}]
-${fields.join("\n")}`;
-      }).filter(Boolean);
-      if (tables.length === 0) return "";
-      return `[\u5F53\u524D\u72B6\u6001]
-${tables.join("\n\n")}
-[/\u5F53\u524D\u72B6\u6001]`;
-    }
-    async _buildWorldbookSection(selectedWorldbooks) {
-      if (!selectedWorldbooks || selectedWorldbooks.length === 0) {
-        return "";
-      }
-      const context = SillyTavern?.getContext?.();
-      const worldbooks = context?.worldInfo || [];
-      const entries = [];
-      for (const wbName of selectedWorldbooks) {
-        const wb = worldbooks.find((w) => w.name === wbName);
-        if (!wb) continue;
-        const wbEntries = wb?.entries || [];
-        for (const entry of wbEntries) {
-          if (entry.enabled && entry.content) {
-            entries.push(entry.content);
-          }
-        }
-      }
-      if (entries.length === 0) return "";
-      return `[\u4E16\u754C\u4E66\u53C2\u8003]
-${entries.join("\n\n")}
-[/\u4E16\u754C\u4E66\u53C2\u8003]`;
-    }
-    _processCustomTemplate(template, loopIndex) {
-      return template.replace(/\{\{loopIndex\}\}/g, String(loopIndex)).replace(/\{\{timestamp\}\}/g, String(Date.now())).replace(/\{\{date\}\}/g, (/* @__PURE__ */ new Date()).toLocaleDateString()).replace(/\{\{time\}\}/g, (/* @__PURE__ */ new Date()).toLocaleTimeString());
-    }
-    async getCurrentData() {
-      const isolationKey = storage.getIsolationKey();
-      return await DatabaseManager.mergeAllIndependentTables(isolationKey);
-    }
-    shouldTriggerLoop(userMessage, loopCount, settings) {
-      if (!settings.enableLoop) return false;
-      if (loopCount >= settings.maxLoops) return false;
-      if (settings.triggerKeywords.length > 0) {
-        return settings.triggerKeywords.some(
-          (keyword) => userMessage.toLowerCase().includes(keyword.toLowerCase())
-        );
-      }
-      return false;
-    }
-    async advancePlot(options = {}) {
-      const settings = this.getSettings();
-      const {
-        loopCount = 0,
-        userMessage = ""
-      } = options;
-      const shouldLoop = this.shouldTriggerLoop(userMessage, loopCount, settings);
-      const prompt2 = await this.generatePlotPrompt({
-        includeMemory: true,
-        includeTables: true,
-        loopIndex: loopCount
-      });
-      return {
-        prompt: prompt2,
-        shouldContinue: shouldLoop,
-        nextLoopIndex: shouldLoop ? loopCount + 1 : loopCount
-      };
-    }
-    getAvailableWorldbooks() {
-      const context = SillyTavern?.getContext?.();
-      const worldbooks = context?.worldInfo || [];
-      return worldbooks.map((wb) => ({
-        name: wb.name,
-        entries: wb.entries?.length || 0,
-        enabled: wb.enabled !== false
-      }));
-    }
-    setSelectedWorldbooks(worldbookNames) {
-      const settings = this.getSettings();
-      settings.selectedWorldbooks = worldbookNames;
-      this.saveSettings(settings);
-    }
-    getSelectedWorldbooks() {
-      const settings = this.getSettings();
-      return settings.selectedWorldbooks || [];
-    }
-    setMemoryRecallCount(count) {
-      const settings = this.getSettings();
-      settings.memoryRecallCount = Math.max(1, Math.min(50, count));
-      this.saveSettings(settings);
-    }
-    getMemoryRecallCount() {
-      const settings = this.getSettings();
-      return settings.memoryRecallCount;
-    }
-    setLoopSettings(enabled, maxLoops) {
-      const settings = this.getSettings();
-      settings.enableLoop = enabled;
-      settings.maxLoops = Math.max(1, Math.min(10, maxLoops));
-      this.saveSettings(settings);
-    }
-    setCustomPromptTemplate(template) {
-      const settings = this.getSettings();
-      settings.customPromptTemplate = template;
-      this.saveSettings(settings);
-    }
-    setTriggerKeywords(keywords) {
-      const settings = this.getSettings();
-      settings.triggerKeywords = Array.isArray(keywords) ? keywords : [];
-      this.saveSettings(settings);
-    }
-    _formatValue(value) {
-      if (value === null || value === void 0) return "";
-      if (typeof value === "object") {
-        try {
-          return JSON.stringify(value);
-        } catch {
-          return String(value);
-        }
-      }
-      return String(value);
-    }
-    generateQuickPrompt(type = "default") {
-      const templates = {
-        default: "[\u5267\u60C5\u63A8\u8FDB]\n\u8BF7\u6839\u636E\u5F53\u524D\u72B6\u6001\u63A8\u8FDB\u5267\u60C5\u53D1\u5C55\u3002\n[/\u5267\u60C5\u63A8\u8FDB]",
-        combat: "[\u5267\u60C5\u63A8\u8FDB]\n\u5F53\u524D\u573A\u666F: \u6218\u6597\n\u8BF7\u63CF\u8FF0\u6218\u6597\u8FC7\u7A0B\u548C\u7ED3\u679C\u3002\n[/\u5267\u60C5\u63A8\u8FDB]",
-        dialogue: "[\u5267\u60C5\u63A8\u8FDB]\n\u5F53\u524D\u573A\u666F: \u5BF9\u8BDD\n\u8BF7\u7EE7\u7EED\u89D2\u8272\u5BF9\u8BDD\u3002\n[/\u5267\u60C5\u63A8\u8FDB]",
-        exploration: "[\u5267\u60C5\u63A8\u8FDB]\n\u5F53\u524D\u573A\u666F: \u63A2\u7D22\n\u8BF7\u63CF\u8FF0\u63A2\u7D22\u53D1\u73B0\u3002\n[/\u5267\u60C5\u63A8\u8FDB]",
-        rest: "[\u5267\u60C5\u63A8\u8FDB]\n\u5F53\u524D\u573A\u666F: \u4F11\u606F\n\u8BF7\u63CF\u8FF0\u4F11\u606F\u671F\u95F4\u7684\u4E92\u52A8\u3002\n[/\u5267\u60C5\u63A8\u8FDB]"
-      };
-      return templates[type] || templates.default;
-    }
-  };
-  __publicField(_PlotAdvanceManager, "_instance", null);
-  var PlotAdvanceManager = _PlotAdvanceManager;
-  var plotAdvance = PlotAdvanceManager.getInstance();
-
-  // src/modules/shujuku/index.js
-  var MODULE_ID = "stk-shujuku";
-  var MODULE_NAME = "Shujuku \u6570\u636E\u5E93";
-  var LOG_PREFIX2 = "[Shujuku]";
-  function logDebug3(...args) {
-    console.log(LOG_PREFIX2, ...args);
-  }
-  var ShujukuModule = class {
-    constructor() {
-      this._initialized = false;
-      this._mainWindow = null;
-      this._tabPanel = null;
-      this._dbVisualizer = null;
-      this._settings = this._getDefaultSettings();
-    }
-    _getDefaultSettings() {
-      return {
-        windowWidth: 600,
-        windowHeight: 500,
-        activeTab: "database",
-        autoRefresh: true,
-        refreshInterval: 5e3
-      };
-    }
-    async init() {
-      if (this._initialized) return;
-      await storage.init();
-      storage.loadActiveProfileCode();
-      this._loadSettings();
-      this._registerMenu();
-      this._initialized = true;
-      logDebug3("Shujuku module initialized");
-    }
-    _loadSettings() {
-      const saved = storage.getModuleSettings(MODULE_ID, this._getDefaultSettings());
-      this._settings = { ...this._settings, ...saved };
-    }
-    _saveSettings() {
-      storage.saveModuleSettings(MODULE_ID, this._settings);
-    }
-    _registerMenu() {
-      const context = SillyTavern?.getContext?.();
-      if (!context) {
-        logDebug3("SillyTavern context not available");
-        return;
-      }
-      if (typeof registerSlashCommand === "function") {
-        registerSlashCommand("shujuku", () => this.toggleMainWindow(), [], "\u6570\u636E\u5E93\u7BA1\u7406", true, true);
-      }
-      logDebug3("Menu registered");
-    }
-    toggleMainWindow() {
-      if (this._mainWindow && this._mainWindow.isVisible) {
-        this._mainWindow.hide();
-        return;
-      }
-      this._showMainWindow();
-    }
-    _showMainWindow() {
-      if (this._mainWindow) {
-        this._mainWindow.show();
-        return;
-      }
-      this._mainWindow = new DraggableWindow({
-        id: "stk-shujuku-window",
-        title: MODULE_NAME,
-        width: this._settings.windowWidth,
-        height: this._settings.windowHeight,
-        className: "stk-shujuku-window",
-        resizable: true,
-        draggable: true,
-        showClose: true,
-        showMinimize: false,
-        position: { x: null, y: null },
-        anchor: "center",
-        onShow: () => this._onWindowShow(),
-        onHide: () => this._onWindowHide(),
-        onClose: () => this._onWindowClose()
-      });
-      this._mainWindow.show();
-      this._setupTabs();
-    }
-    _setupTabs() {
-      if (!this._mainWindow || !this._mainWindow.$body) return;
-      const tabs = [
-        { id: "database", label: "\u6570\u636E\u5E93", icon: "fa-solid fa-database" },
-        { id: "plot", label: "\u5267\u60C5\u63A8\u8FDB", icon: "fa-solid fa-forward" },
-        { id: "settings", label: "\u8BBE\u7F6E", icon: "fa-solid fa-gear" }
-      ];
-      this._tabPanel = new TabbedPanel({
-        id: "stk-shujuku-tabs",
-        tabs,
-        activeTab: this._settings.activeTab,
-        className: "stk-shujuku-tabs",
-        onTabChange: (tabId) => this._onTabChange(tabId)
-      });
-      this._tabPanel.show(`#${this._mainWindow.id} .stk-window-body`);
-    }
-    async _onTabChange(tabId) {
-      this._settings.activeTab = tabId;
-      this._saveSettings();
-      switch (tabId) {
-        case "database":
-          await this._renderDatabaseTab();
-          break;
-        case "plot":
-          await this._renderPlotTab();
-          break;
-        case "settings":
-          await this._renderSettingsTab();
-          break;
-      }
-    }
-    async _renderDatabaseTab() {
-      if (!this._dbVisualizer) {
-        this._dbVisualizer = new DatabaseVisualizer({
-          id: "stk-shujuku-db",
-          className: "stk-shujuku-db",
-          onTableSelect: (key, data) => this._onTableSelect(key, data)
-        });
-      }
-      const content = this._dbVisualizer.render();
-      this._tabPanel.setTabContent("database", content);
-      this._dbVisualizer.$el = $(`#${this._dbVisualizer.id}`);
-      this._dbVisualizer.$tableList = this._dbVisualizer.$el.find(".stk-db-table-list");
-      this._dbVisualizer.$editor = this._dbVisualizer.$el.find(".stk-db-editor");
-      this._dbVisualizer._bindEvents();
-      await this._dbVisualizer.refresh();
-    }
-    async _renderPlotTab() {
-      const settings = plotAdvance.getSettings();
-      const worldbooks = plotAdvance.getAvailableWorldbooks();
-      const selectedWb = plotAdvance.getSelectedWorldbooks();
-      const worldbookOptions = worldbooks.map((wb) => {
-        const isSelected = selectedWb.includes(wb.name);
-        return `
-                <label class="stk-checkbox-item">
-                    <input type="checkbox" data-worldbook="${wb.name}" ${isSelected ? "checked" : ""}>
-                    <span>${wb.name}</span>
-                    <span class="stk-wb-count">(${wb.entries}\u6761)</span>
-                </label>
-            `;
-      }).join("");
-      const content = `
-            <div class="stk-plot-panel">
-                <div class="stk-plot-section">
-                    <h4>\u8BB0\u5FC6\u56DE\u6EAF</h4>
-                    <div class="stk-plot-row">
-                        <label>\u56DE\u6EAF\u6D88\u606F\u6570:</label>
-                        <input type="number" id="stk-memory-count" value="${settings.memoryRecallCount}" min="1" max="50">
-                    </div>
-                </div>
-
-                <div class="stk-plot-section">
-                    <h4>\u5FAA\u73AF\u63A8\u8FDB</h4>
-                    <div class="stk-plot-row">
-                        <label class="stk-checkbox-item">
-                            <input type="checkbox" id="stk-enable-loop" ${settings.enableLoop ? "checked" : ""}>
-                            <span>\u542F\u7528\u5FAA\u73AF</span>
-                        </label>
-                    </div>
-                    <div class="stk-plot-row">
-                        <label>\u6700\u5927\u5FAA\u73AF\u6B21\u6570:</label>
-                        <input type="number" id="stk-max-loops" value="${settings.maxLoops}" min="1" max="10">
-                    </div>
-                </div>
-
-                <div class="stk-plot-section">
-                    <h4>\u4E16\u754C\u4E66\u9009\u62E9</h4>
-                    <div class="stk-worldbook-list">
-                        ${worldbookOptions || '<span class="stk-empty-msg">\u65E0\u53EF\u7528\u7684\u4E16\u754C\u4E66</span>'}
-                    </div>
-                </div>
-
-                <div class="stk-plot-section">
-                    <h4>\u5FEB\u901F\u64CD\u4F5C</h4>
-                    <div class="stk-plot-actions">
-                        <button class="stk-btn interactable" data-action="generate-prompt">\u751F\u6210\u63A8\u8FDB\u63D0\u793A</button>
-                        <button class="stk-btn interactable" data-action="quick-combat">\u6218\u6597\u573A\u666F</button>
-                        <button class="stk-btn interactable" data-action="quick-dialogue">\u5BF9\u8BDD\u573A\u666F</button>
-                    </div>
-                </div>
-            </div>
-        `;
-      this._tabPanel.setTabContent("plot", content);
-      this._bindPlotEvents();
-    }
-    _bindPlotEvents() {
-      const $panel = this._tabPanel.$tabContent;
-      $panel.on("change", "#stk-memory-count", (e) => {
-        const count = parseInt($(e.target).val(), 10);
-        plotAdvance.setMemoryRecallCount(count);
-      });
-      $panel.on("change", "#stk-enable-loop", (e) => {
-        const enabled = $(e.target).is(":checked");
-        const maxLoops = parseInt($("#stk-max-loops").val(), 10);
-        plotAdvance.setLoopSettings(enabled, maxLoops);
-      });
-      $panel.on("change", "#stk-max-loops", (e) => {
-        const maxLoops = parseInt($(e.target).val(), 10);
-        const enabled = $("#stk-enable-loop").is(":checked");
-        plotAdvance.setLoopSettings(enabled, maxLoops);
-      });
-      $panel.on("change", "[data-worldbook]", (e) => {
-        const selected = [];
-        $panel.find("[data-worldbook]:checked").each(function() {
-          selected.push($(this).data("worldbook"));
-        });
-        plotAdvance.setSelectedWorldbooks(selected);
-      });
-      $panel.on("click", "[data-action]", async (e) => {
-        const action = $(e.currentTarget).data("action");
-        await this._handlePlotAction(action);
-      });
-    }
-    async _handlePlotAction(action) {
-      switch (action) {
-        case "generate-prompt":
-          const prompt2 = await plotAdvance.generatePlotPrompt();
-          this._copyToClipboard(prompt2);
-          this._showToast("\u63A8\u8FDB\u63D0\u793A\u5DF2\u590D\u5236\u5230\u526A\u8D34\u677F");
-          break;
-        case "quick-combat":
-          this._copyToClipboard(plotAdvance.generateQuickPrompt("combat"));
-          this._showToast("\u6218\u6597\u573A\u666F\u63D0\u793A\u5DF2\u590D\u5236");
-          break;
-        case "quick-dialogue":
-          this._copyToClipboard(plotAdvance.generateQuickPrompt("dialogue"));
-          this._showToast("\u5BF9\u8BDD\u573A\u666F\u63D0\u793A\u5DF2\u590D\u5236");
-          break;
-      }
-    }
-    async _renderSettingsTab() {
-      const profiles = storage.listProfiles();
-      const currentProfile = storage.getCurrentProfileCode();
-      const profileOptions = Object.entries(profiles).map(([code, info]) => {
-        const isSelected = code === currentProfile;
-        return `
-                <option value="${code}" ${isSelected ? "selected" : ""}>
-                    ${info.name} (${code})
-                </option>
-            `;
-      }).join("");
-      const content = `
-            <div class="stk-settings-panel">
-                <div class="stk-settings-section">
-                    <h4>Profile \u7BA1\u7406</h4>
-                    <div class="stk-settings-row">
-                        <label>\u5F53\u524D Profile:</label>
-                        <select id="stk-profile-select">
-                            ${profileOptions}
-                        </select>
-                    </div>
-                    <div class="stk-settings-row">
-                        <input type="text" id="stk-new-profile-name" placeholder="\u65B0 Profile \u540D\u79F0">
-                        <button class="stk-btn interactable" id="stk-create-profile">\u521B\u5EFA</button>
-                    </div>
-                </div>
-
-                <div class="stk-settings-section">
-                    <h4>\u7A97\u53E3\u8BBE\u7F6E</h4>
-                    <div class="stk-settings-row">
-                        <label>\u7A97\u53E3\u5BBD\u5EA6:</label>
-                        <input type="number" id="stk-window-width" value="${this._settings.windowWidth}" min="300" max="1200">
-                    </div>
-                    <div class="stk-settings-row">
-                        <label>\u7A97\u53E3\u9AD8\u5EA6:</label>
-                        <input type="number" id="stk-window-height" value="${this._settings.windowHeight}" min="200" max="800">
-                    </div>
-                </div>
-
-                <div class="stk-settings-section">
-                    <h4>\u6570\u636E\u64CD\u4F5C</h4>
-                    <div class="stk-settings-actions">
-                        <button class="stk-btn interactable" id="stk-export-data">\u5BFC\u51FA\u6570\u636E</button>
-                        <button class="stk-btn interactable" id="stk-import-data">\u5BFC\u5165\u6570\u636E</button>
-                        <button class="stk-btn stk-btn-danger interactable" id="stk-clear-data">\u6E05\u9664\u5F53\u524DProfile\u6570\u636E</button>
-                    </div>
-                </div>
-            </div>
-        `;
-      this._tabPanel.setTabContent("settings", content);
-      this._bindSettingsEvents();
-    }
-    _bindSettingsEvents() {
-      const $panel = this._tabPanel.$tabContent;
-      $panel.on("change", "#stk-profile-select", (e) => {
-        const code = $(e.target).val();
-        if (storage.switchProfile(code)) {
-          this._showToast(`\u5DF2\u5207\u6362\u5230 Profile: ${code}`);
-          if (this._dbVisualizer) {
-            this._dbVisualizer.isolationKey = storage.getIsolationKey();
-            this._dbVisualizer.refresh();
-          }
-        }
-      });
-      $panel.on("click", "#stk-create-profile", () => {
-        const name = $("#stk-new-profile-name").val().trim();
-        if (!name) {
-          this._showToast("\u8BF7\u8F93\u5165 Profile \u540D\u79F0", "error");
-          return;
-        }
-        const code = "profile_" + Date.now();
-        if (storage.createProfile(code, name)) {
-          this._showToast(`Profile "${name}" \u5DF2\u521B\u5EFA`);
-          this._renderSettingsTab();
-        } else {
-          this._showToast("\u521B\u5EFA\u5931\u8D25", "error");
-        }
-      });
-      $panel.on("change", "#stk-window-width", (e) => {
-        this._settings.windowWidth = parseInt($(e.target).val(), 10);
-        this._saveSettings();
-      });
-      $panel.on("change", "#stk-window-height", (e) => {
-        this._settings.windowHeight = parseInt($(e.target).val(), 10);
-        this._saveSettings();
-      });
-      $panel.on("click", "#stk-export-data", () => this._exportData());
-      $panel.on("click", "#stk-import-data", () => this._importData());
-      $panel.on("click", "#stk-clear-data", () => this._clearData());
-    }
-    async _exportData() {
-      const data = await tableLogic.getCurrentData();
-      const json = JSON.stringify(data, null, 2);
-      const blob = new Blob([json], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `shujuku-export-${storage.getIsolationKey()}-${Date.now()}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      this._showToast("\u6570\u636E\u5DF2\u5BFC\u51FA");
-    }
-    _importData() {
-      const input = document.createElement("input");
-      input.type = "file";
-      input.accept = ".json";
-      input.onchange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-          try {
-            const data = JSON.parse(event.target.result);
-            const results = await tableLogic.batchUpdate(
-              Object.entries(data).map(([key, value]) => ({
-                sheetKey: key,
-                data: value
-              }))
-            );
-            this._showToast(`\u5BFC\u5165\u5B8C\u6210: ${results.filter((r) => r.success).length} \u6761\u6210\u529F`);
-            if (this._dbVisualizer) {
-              await this._dbVisualizer.refresh();
-            }
-          } catch (err) {
-            this._showToast("\u5BFC\u5165\u5931\u8D25: " + err.message, "error");
-          }
-        };
-        reader.readAsText(file);
-      };
-      input.click();
-    }
-    async _clearData() {
-      if (!confirm("\u786E\u5B9A\u8981\u6E05\u9664\u5F53\u524D Profile \u7684\u6240\u6709\u6570\u636E\u5417\uFF1F\u6B64\u64CD\u4F5C\u4E0D\u53EF\u64A4\u9500\u3002")) {
-        return;
-      }
-      const data = await tableLogic.getCurrentData();
-      if (!data) return;
-      for (const key of Object.keys(data)) {
-        await tableLogic.deleteTable(key);
-      }
-      this._showToast("\u6570\u636E\u5DF2\u6E05\u9664");
-      if (this._dbVisualizer) {
-        await this._dbVisualizer.refresh();
-      }
-    }
-    _onTableSelect(key, data) {
-      logDebug3("Table selected:", key);
-    }
-    _onWindowShow() {
-      logDebug3("Window shown");
-    }
-    _onWindowHide() {
-      logDebug3("Window hidden");
-    }
-    _onWindowClose() {
-      this._mainWindow = null;
-      this._tabPanel = null;
-      this._dbVisualizer = null;
-      logDebug3("Window closed");
-    }
-    _copyToClipboard(text) {
-      navigator.clipboard.writeText(text).catch((err) => {
-        logDebug3("Failed to copy:", err);
-      });
-    }
-    _showToast(message, type = "success") {
-      if (typeof toastr !== "undefined") {
-        toastr[type](message);
-      } else {
-        logDebug3(`[Toast ${type}]: ${message}`);
-      }
-    }
-    destroy() {
-      if (this._mainWindow) {
-        this._mainWindow.destroy();
-        this._mainWindow = null;
-      }
-      this._tabPanel = null;
-      this._dbVisualizer = null;
-      this._initialized = false;
-    }
-  };
-  var shujukuModule = new ShujukuModule();
-
   // src/index.js
-  var modules = [StatusBarModule, PlotOptionsModule, shujukuModule];
+  var modules = [StatusBarModule, PlotOptionsModule];
   jQuery(async function() {
     const ctx = SillyTavern.getContext();
     await apiPresetManager.init();
