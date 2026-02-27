@@ -3,10 +3,23 @@ import { UI } from '../ui.js';
 import { storage } from '../managers/StorageManager.js';
 import { templateManager } from '../managers/TemplateManager.js';
 import { DraggableWindow, windowManager } from '../components/index.js';
+import { RegexExtractor } from '../utils/RegexExtractor.js';
+import { RegexConfigModule } from './regexConfig.js';
 
-const STATUS_REGEX = /<StatusBlock>([\s\S]*?)<\/StatusBlock>/i;
-const STATUS_FULL_REGEX = /<StatusBlock>[\s\S]*?<\/StatusBlock>/i;
+const STATUS_TAG = 'StatusBlock';
 const PLACEHOLDER = '<StatusBarPlaceholder/>';
+
+let _statusExtractor = null;
+function getStatusExtractor(cleanupPatterns) {
+    if (!_statusExtractor) {
+        _statusExtractor = new RegexExtractor();
+        _statusExtractor.addPattern(STATUS_TAG, `<${STATUS_TAG}>([\\s\\S]*?)</${STATUS_TAG}>`);
+    }
+    if (cleanupPatterns && cleanupPatterns.length > 0) {
+        _statusExtractor.cleanupPatterns = cleanupPatterns.map(p => typeof p === 'string' ? new RegExp(p, 'gi') : p);
+    }
+    return _statusExtractor;
+}
 
 const DEFAULT_SYSTEM_PROMPT = `你是状态栏生成器。根据正文和上轮状态输出更新后的状态栏。
 规则：每字段独立完整填写，禁止使用"同上""无变化"等省略。只输出 <StatusBlock>...</StatusBlock>，不输出其他内容。
@@ -52,14 +65,8 @@ let _previewWindow = null;
 let _processing = false;
 
 function parseBlock(text) {
-    const match = text.match(STATUS_REGEX);
-    if (!match) return null;
-    const raw = match[1].trim();
-    const result = { raw };
-    for (const sec of SECTIONS) {
-        const m = raw.match(new RegExp('<' + sec + '>([\\s\\S]*?)<\\/' + sec + '>', 'i'));
-        result[sec] = m ? m[1].trim() : '';
-    }
+    const result = RegexExtractor.parseBlock(text, STATUS_TAG, SECTIONS);
+    if (!result) return null;
     return result;
 }
 
@@ -387,7 +394,7 @@ export const StatusBarModule = {
 
         if (result) {
             setStatusData(msgId, result);
-            let text = (msg.mes || '').replace(STATUS_FULL_REGEX, '').replace(PLACEHOLDER, '').trimEnd();
+            let text = RegexExtractor.removeBlock((msg.mes || ''), STATUS_TAG).replace(PLACEHOLDER, '').trimEnd();
             text += '\n\n<auxiliary_tool type="statusbar">\n<StatusBlock>\n' + result.raw + '\n</StatusBlock>\n</auxiliary_tool>\n\n' + PLACEHOLDER;
             msg.mes = text;
             const ctx = SillyTavern.getContext();

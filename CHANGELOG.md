@@ -6,6 +6,68 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-02-28
+
+### Added
+
+#### 正则提取独立模块
+- **RegexExtractor** - 独立正则提取工具类
+  - 静态方法 `parseBlock` / `removeBlock` 解析/移除标签块
+  - 实例方法 `addPattern` / `cleanup` 管理正则模式
+  - 支持多模式注册与批量处理
+- **regexConfig** - 集中正则配置模块
+  - 全局共享 RegexExtractor 实例
+  - UI 渲染与模式管理
+  - JSON 导入/导出支持
+
+#### API 预设管理增强
+- **ApiPresetManager** 扩展
+  - `exportPresets()` - 导出预设为 JSON
+  - `importPresets(data)` - 从 JSON 导入预设
+  - `downloadPresets()` - 下载预设文件
+  - `uploadPresets()` - 上传预设文件
+- **API 预设管理 Tab** - 独立 UI 管理界面
+  - 预设列表展示与选择
+  - 预设创建/编辑/删除/复制
+  - JSON 导入/导出
+
+#### AI 指令预设系统
+- **AIInstructionsManager** - AI 指令预设管理器
+  - 预设 CRUD 操作
+  - 动态片段管理（角色、内容、顺序）
+  - 提示词构建
+  - JSON 导入/导出
+- **AI 指令预设 Tab** - 完整 UI 界面
+  - 预设选择与管理
+  - 片段列表编辑（角色选择、内容输入）
+  - 实时预览生成结果
+
+#### 世界书配置优化
+- **WorldbookConfigManager** - 世界书配置管理器
+  - 0TK 占用模式切换（一键禁用/启用 STK 相关条目）
+  - 条目列表获取与状态同步
+  - 配置导入/导出/重置
+- **世界书配置 Tab** - UI 管理界面
+  - 0TK 模式开关
+  - 同步操作按钮
+  - STK 相关条目列表展示与单独控制
+  - 配置管理（导入/导出/重置）
+
+### Changed
+- **statusbar.js** - 重构引用独立 RegexExtractor，移除硬编码正则逻辑
+- **ui.js** - 添加三个新 Tab（API 预设管理、AI 指令预设、世界书配置）
+
+### Technical Details
+- 新增文件：
+  - `src/utils/RegexExtractor.js` - 正则提取工具类
+  - `src/modules/regexConfig.js` - 集中正则配置模块
+  - `src/modules/aiInstructions.js` - AI 指令预设模块
+  - `src/modules/worldbookConfig.js` - 世界书配置模块
+- 更新文件：
+  - `src/modules/statusbar.js` - 引用 RegexExtractor
+  - `src/managers/ApiPresetManager.js` - 添加导入导出方法
+  - `src/ui.js` - 添加新 Tab 和事件绑定
+
 ## [1.3.1] - 2026-02-27
 
 ### Changed

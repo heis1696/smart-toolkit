@@ -14,11 +14,13 @@ smart-toolkit/
 │   ├── index.js              # 入口：注册模块、绑定事件、初始化世界书、清理标签
 │   ├── core.js               # 核心层：设置管理、消息工具、API 请求、世界书管理
 │   ├── ui.js                 # UI 层：扩展菜单入口、独立窗口、标签页导航 + 模块管理
+│   ├── utils/                # 工具层：通用工具类
+│   │   └── RegexExtractor.js # 正则提取工具：标签块解析、模式管理
 │   ├── managers/             # 管理器层：单例服务
 │   │   ├── index.js          # 导出所有管理器
 │   │   ├── StorageManager.js # 双存储策略（extensionSettings + IndexedDB）+ Profile 隔离
 │   │   ├── TemplateManager.js# 模板 CRUD、导入导出、World Book 同步
-│   │   ├── ApiPresetManager.js# API 预设管理、测试连接、获取模型
+│   │   ├── ApiPresetManager.js# API 预设管理、测试连接、获取模型、导入导出
 │   │   ├── DatabaseManager.js# 数据库核心：表格合并、排序、消息解析
 │   │   ├── TableLogicManager.js# 填表逻辑：编辑命令、审计日志
 │   │   └── PlotAdvanceManager.js# 剧情推进：记忆召回、世界书集成
@@ -37,7 +39,10 @@ smart-toolkit/
 │   │   └── WorldbookSelector.js# 世界书选择器组件
 │   └── modules/              # 功能模块
 │       ├── statusbar.js      # 模块：状态栏生成器
-│       └── plotOptions.js    # 模块：剧情推进选项
+│       ├── plotOptions.js    # 模块：剧情推进选项
+│       ├── regexConfig.js    # 模块：正则配置集中管理
+│       ├── aiInstructions.js # 模块：AI 指令预设管理
+│       └── worldbookConfig.js# 模块：世界书配置（0TK模式）
 ├── dist/
 │   └── bundle.js             # esbuild 构建产物 (IIFE)
 ├── ARCHITECTURE.md           # 本文档
@@ -62,10 +67,13 @@ index.js (入口/事件总线)
     │
     ├── core.js (数据 & 逻辑 & 世界书)
     │
+    ├── utils/ (工具层 - 通用工具)
+    │   └── RegexExtractor    → 正则提取、标签块解析
+    │
     ├── managers/ (管理器层 - 单例服务)
     │   ├── StorageManager    → 双存储策略 + Profile 隔离
     │   ├── TemplateManager   → 模板管理
-    │   ├── ApiPresetManager  → API 预设管理
+    │   ├── ApiPresetManager  → API 预设管理 + 导入导出
     │   ├── DatabaseManager   → 数据库核心
     │   ├── TableLogicManager → 填表逻辑
     │   └── PlotAdvanceManager→ 剧情推进
@@ -82,8 +90,11 @@ index.js (入口/事件总线)
     │   └── WorldbookSelector → 世界书选择器
     │
     └── modules/ (功能模块)
-        ├── statusbar.js
-        └── plotOptions.js
+        ├── statusbar.js      → 状态栏生成
+        ├── plotOptions.js    → 剧情推进选项
+        ├── regexConfig.js    → 正则配置管理
+        ├── aiInstructions.js → AI 指令预设
+        └── worldbookConfig.js→ 世界书配置
 ```
 
 ### 1. `index.js` — 入口

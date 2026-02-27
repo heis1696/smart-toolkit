@@ -178,6 +178,105 @@ class ApiPresetManager {
         storage.setObject('api_presets', this._presets);
         storage.setObject('api_module_bindings', this._moduleBindings);
     }
+
+    exportPresets(presetIds = null) {
+        const presetsToExport = presetIds 
+            ? presetIds.map(id => this._presets[id]).filter(Boolean)
+            : Object.values(this._presets);
+        
+        return {
+            version: 1,
+            exportedAt: new Date().toISOString(),
+            presets: presetsToExport,
+            moduleBindings: presetIds 
+                ? Object.fromEntries(Object.entries(this._moduleBindings).filter(([, pid]) => presetIds.includes(pid)))
+                : { ...this._moduleBindings }
+        };
+    }
+
+    importPresets(data, options = {}) {
+        const { merge = true, overwrite = false } = options;
+        
+        if (!data || !data.presets || !Array.isArray(data.presets)) {
+            return { success: false, imported: 0, skipped: 0, error: '无效的导入数据格式' };
+        }
+
+        let imported = 0;
+        let skipped = 0;
+        const conflicts = [];
+
+        for (const preset of data.presets) {
+            if (!preset.id) {
+                skipped++;
+                continue;
+            }
+
+            if (this._presets[preset.id] && !overwrite) {
+                if (merge) {
+                    const newId = `${preset.id}_imported_${Date.now()}`;
+                    this._presets[newId] = { ...preset, id: newId };
+                    imported++;
+                    conflicts.push({ originalId: preset.id, newId });
+                } else {
+                    skipped++;
+                    conflicts.push({ originalId: preset.id, reason: 'ID已存在' });
+                }
+            } else {
+                this._presets[preset.id] = preset;
+                imported++;
+            }
+        }
+
+        if (data.moduleBindings && merge) {
+            for (const [moduleId, presetId] of Object.entries(data.moduleBindings)) {
+                if (this._presets[presetId]) {
+                    this._moduleBindings[moduleId] = presetId;
+                }
+            }
+        }
+
+        this._save();
+        return { success: true, imported, skipped, conflicts };
+    }
+
+    exportToJSON(presetIds = null) {
+        const data = this.exportPresets(presetIds);
+        return JSON.stringify(data, null, 2);
+    }
+
+    importFromJSON(jsonStr, options = {}) {
+        try {
+            const data = JSON.parse(jsonStr);
+            return this.importPresets(data, options);
+        } catch (e) {
+            return { success: false, imported: 0, skipped: 0, error: 'JSON解析失败: ' + e.message };
+        }
+    }
+
+    downloadPresets(presetIds = null, filename = 'api-presets.json') {
+        const json = this.exportToJSON(presetIds);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    async uploadPresets(file) {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const result = this.importFromJSON(e.target.result);
+                resolve(result);
+            };
+            reader.onerror = () => {
+                resolve({ success: false, imported: 0, skipped: 0, error: '文件读取失败' });
+            };
+            reader.readAsText(file);
+        });
+    }
 }
 
 export const apiPresetManager = ApiPresetManager.getInstance();

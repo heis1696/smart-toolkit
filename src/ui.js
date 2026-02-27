@@ -1,6 +1,8 @@
 // @ts-nocheck
 import { Core } from './core.js';
 import { apiPresetManager } from './managers/index.js';
+import { AIInstructionsManager } from './modules/aiInstructions.js';
+import { WorldbookConfigManager } from './modules/worldbookConfig.js';
 
 const SHARED_DEFAULTS = {
     use_preset: false,
@@ -450,6 +452,9 @@ export const UI = {
                 <div class="stk-nav-title">核心</div>
                 <div class="stk-nav-btn active" data-tab="modules"><i class="fa-solid fa-puzzle-piece"></i><span>模块管理</span></div>
                 <div class="stk-nav-btn" data-tab="api"><i class="fa-solid fa-plug"></i><span>API 配置</span></div>
+                <div class="stk-nav-btn" data-tab="api_presets"><i class="fa-solid fa-database"></i><span>API 预设管理</span></div>
+                <div class="stk-nav-btn" data-tab="ai_instructions"><i class="fa-solid fa-wand-magic-sparkles"></i><span>AI 指令预设</span></div>
+                <div class="stk-nav-btn" data-tab="worldbook_config"><i class="fa-solid fa-book"></i><span>世界书配置</span></div>
                 <div class="stk-nav-btn" data-tab="prompts"><i class="fa-solid fa-file-lines"></i><span>模板提示词</span></div>
             </div>
             <div class="stk-nav-section">
@@ -496,6 +501,131 @@ export const UI = {
                                     </select>
                                 </label>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="stk-tab" id="stk-tab-api_presets">
+                <h3 style="margin:0 0 12px;font-size:15px;color:var(--stk-text)">API 预设管理</h3>
+                <div class="stk-section">
+                    <div class="stk-section-header interactable" tabindex="0">
+                        <span>预设列表</span>
+                        <span class="stk-arrow fa-solid fa-chevron-down"></span>
+                    </div>
+                    <div class="stk-section-body">
+                        <div class="stk-row" style="gap:8px;margin-bottom:8px">
+                            <div class="stk-btn primary" id="stk_preset_new">+ 新建预设</div>
+                            <div class="stk-btn" id="stk_preset_import">导入</div>
+                            <div class="stk-btn" id="stk_preset_export_all">导出全部</div>
+                        </div>
+                        <div id="stk_preset_list"></div>
+                    </div>
+                </div>
+                <div class="stk-section">
+                    <div class="stk-section-header interactable" tabindex="0">
+                        <span>模块预设绑定</span>
+                        <span class="stk-arrow fa-solid fa-chevron-down"></span>
+                    </div>
+                    <div class="stk-section-body" id="stk_preset_module_bindings">
+                        ${modules.map(m => `
+                            <div class="stk-row">
+                                <label style="flex-direction:row;align-items:center;gap:8px">
+                                    <span style="min-width:100px">${m.name}</span>
+                                    <select class="text_pole stk-preset-binding" data-module="${m.id}" style="flex:1">
+                                        <option value="">-- 使用全局配置 --</option>
+                                    </select>
+                                </label>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+            <div class="stk-tab" id="stk-tab-ai_instructions">
+                <h3 style="margin:0 0 12px;font-size:15px;color:var(--stk-text)">AI 指令预设</h3>
+                <div class="stk-section">
+                    <div class="stk-section-header interactable" tabindex="0">
+                        <span>预设管理</span>
+                        <span class="stk-arrow fa-solid fa-chevron-down"></span>
+                    </div>
+                    <div class="stk-section-body">
+                        <div class="stk-row" style="gap:8px;margin-bottom:8px">
+                            <select id="stk_ai_preset_select" class="text_pole" style="flex:1"></select>
+                            <div class="stk-btn primary" id="stk_ai_preset_new">+ 新建</div>
+                            <div class="stk-btn" id="stk_ai_preset_dup">复制</div>
+                            <div class="stk-btn" id="stk_ai_preset_del" style="color:#ff6b6b">删除</div>
+                        </div>
+                        <div class="stk-row" style="gap:8px">
+                            <div class="stk-btn" id="stk_ai_preset_import">导入</div>
+                            <div class="stk-btn" id="stk_ai_preset_export">导出当前</div>
+                            <div class="stk-btn" id="stk_ai_preset_export_all">导出全部</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="stk-section">
+                    <div class="stk-section-header interactable" tabindex="0">
+                        <span>段落编辑</span>
+                        <span class="stk-arrow fa-solid fa-chevron-down"></span>
+                    </div>
+                    <div class="stk-section-body" id="stk_ai_segments_container"></div>
+                </div>
+                <div class="stk-section">
+                    <div class="stk-section-header interactable" tabindex="0">
+                        <span>预览</span>
+                        <span class="stk-arrow fa-solid fa-chevron-down"></span>
+                    </div>
+                    <div class="stk-section-body">
+                        <textarea id="stk_ai_preview" class="text_pole" rows="6" readonly style="font-size:12px;resize:vertical"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="stk-tab" id="stk-tab-worldbook_config">
+                <h3 style="margin:0 0 12px;font-size:15px;color:var(--stk-text)">世界书配置</h3>
+                <div class="stk-section">
+                    <div class="stk-section-header interactable" tabindex="0">
+                        <span>0TK 占用模式</span>
+                        <span class="stk-arrow fa-solid fa-chevron-down"></span>
+                    </div>
+                    <div class="stk-section-body">
+                        <div class="stk-toggle">
+                            <input type="checkbox" id="stk_wb_0tk_mode" />
+                            <span>启用 0TK 占用模式</span>
+                        </div>
+                        <div style="font-size:11px;color:var(--stk-text-3);margin-top:8px">
+                            启用后，所有STK相关世界书条目将被禁用，节省Token占用。条目在世界书中显示为"禁用"状态，关闭此选项后自动恢复启用。
+                        </div>
+                    </div>
+                </div>
+                <div class="stk-section">
+                    <div class="stk-section-header interactable" tabindex="0">
+                        <span>同步操作</span>
+                        <span class="stk-arrow fa-solid fa-chevron-down"></span>
+                    </div>
+                    <div class="stk-section-body">
+                        <div class="stk-row" style="gap:8px">
+                            <div class="stk-btn" id="stk_wb_sync_now">立即同步</div>
+                            <div class="stk-btn" id="stk_wb_refresh_list">刷新条目列表</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="stk-section">
+                    <div class="stk-section-header interactable" tabindex="0">
+                        <span>条目列表</span>
+                        <span class="stk-arrow fa-solid fa-chevron-down"></span>
+                    </div>
+                    <div class="stk-section-body" id="stk_wb_entries_list">
+                        <div style="text-align:center;color:var(--stk-text-3);padding:20px">点击"刷新条目列表"加载</div>
+                    </div>
+                </div>
+                <div class="stk-section">
+                    <div class="stk-section-header interactable" tabindex="0">
+                        <span>配置管理</span>
+                        <span class="stk-arrow fa-solid fa-chevron-down"></span>
+                    </div>
+                    <div class="stk-section-body">
+                        <div class="stk-row" style="gap:8px">
+                            <div class="stk-btn" id="stk_wb_export_config">导出配置</div>
+                            <div class="stk-btn" id="stk_wb_import_config">导入配置</div>
+                            <div class="stk-btn" id="stk_wb_reset_config" style="color:#ff6b6b">重置</div>
                         </div>
                     </div>
                 </div>
@@ -747,5 +877,573 @@ export const UI = {
             const ms = Core.getModuleSettings(m.id, m.defaultSettings);
             m.bindUI(ms, save);
         });
+
+        this._bindApiPresetEvents(modules);
+        this._bindAiInstructionEvents(modules);
+        this._bindWorldbookConfigEvents(modules);
+    },
+
+    _refreshPresetList() {
+        const presets = apiPresetManager.getAllPresets();
+        const $list = $('#stk_preset_list').empty();
+        
+        if (presets.length === 0) {
+            $list.html('<div style="text-align:center;color:var(--stk-text-3);padding:20px">暂无预设，点击"新建预设"创建</div>');
+            return;
+        }
+
+        presets.forEach(p => {
+            $list.append(`
+                <div class="stk-preset-item" data-id="${p.id}" style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;margin:4px 0;background:rgba(0,0,0,0.15);border-radius:6px">
+                    <div>
+                        <div style="font-weight:500;color:var(--stk-text)">${_.escape(p.name)}</div>
+                        <div style="font-size:11px;color:var(--stk-text-3)">${_.escape(p.baseUrl)} | ${_.escape(p.model)}</div>
+                    </div>
+                    <div style="display:flex;gap:4px">
+                        <div class="stk-btn stk-preset-edit" data-id="${p.id}" style="padding:4px 8px;font-size:11px">编辑</div>
+                        <div class="stk-btn stk-preset-test" data-id="${p.id}" style="padding:4px 8px;font-size:11px">测试</div>
+                        <div class="stk-btn stk-preset-export" data-id="${p.id}" style="padding:4px 8px;font-size:11px">导出</div>
+                        <div class="stk-btn stk-preset-delete" data-id="${p.id}" style="padding:4px 8px;font-size:11px;color:#ff6b6b">删除</div>
+                    </div>
+                </div>
+            `);
+        });
+
+        this._refreshPresetBindings(modules);
+    },
+
+    _refreshPresetBindings(modules) {
+        const presets = apiPresetManager.getAllPresets();
+        $('.stk-preset-binding').each(function() {
+            const moduleId = $(this).data('module');
+            const currentPresetId = apiPresetManager.getModulePreset(moduleId)?.id || '';
+            
+            $(this).empty().append('<option value="">-- 使用全局配置 --</option>');
+            presets.forEach(p => {
+                $(this).append(`<option value="${p.id}"${p.id === currentPresetId ? ' selected' : ''}>${_.escape(p.name)}</option>`);
+            });
+        });
+    },
+
+    _bindApiPresetEvents(modules) {
+        this._refreshPresetList();
+
+        $('#stk_preset_new').on('click', () => {
+            this._showPresetEditor(null);
+        });
+
+        $('#stk_preset_import').on('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const result = await apiPresetManager.uploadPresets(file);
+                if (result.success) {
+                    toastr.success(`导入成功：${result.imported} 个预设`, 'API预设');
+                    if (result.skipped > 0) {
+                        toastr.warning(`跳过 ${result.skipped} 个`, 'API预设');
+                    }
+                    this._refreshPresetList();
+                } else {
+                    toastr.error(result.error || '导入失败', 'API预设');
+                }
+            };
+            input.click();
+        });
+
+        $('#stk_preset_export_all').on('click', () => {
+            const presets = apiPresetManager.getAllPresets();
+            if (presets.length === 0) {
+                toastr.warning('没有可导出的预设', 'API预设');
+                return;
+            }
+            apiPresetManager.downloadPresets();
+            toastr.success('已导出全部预设', 'API预设');
+        });
+
+        $('#stk_preset_list').on('click', '.stk-preset-edit', (e) => {
+            const id = $(e.currentTarget).data('id');
+            this._showPresetEditor(id);
+        });
+
+        $('#stk_preset_list').on('click', '.stk-preset-test', async (e) => {
+            const id = $(e.currentTarget).data('id');
+            const $btn = $(e.currentTarget).text('测试中...').prop('disabled', true);
+            try {
+                const result = await apiPresetManager.testConnection(id);
+                if (result.success) {
+                    toastr.success('连接成功', 'API预设');
+                } else {
+                    toastr.error(result.error || '连接失败', 'API预设');
+                }
+            } catch (err) {
+                toastr.error(err.message, '测试失败');
+            } finally {
+                $btn.text('测试').prop('disabled', false);
+            }
+        });
+
+        $('#stk_preset_list').on('click', '.stk-preset-export', (e) => {
+            const id = $(e.currentTarget).data('id');
+            const preset = apiPresetManager.getPreset(id);
+            if (preset) {
+                apiPresetManager.downloadPresets([id], `api-preset-${preset.name}.json`);
+                toastr.success('已导出预设', 'API预设');
+            }
+        });
+
+        $('#stk_preset_list').on('click', '.stk-preset-delete', (e) => {
+            const id = $(e.currentTarget).data('id');
+            const preset = apiPresetManager.getPreset(id);
+            if (confirm(`确定删除预设「${preset?.name || id}」吗？`)) {
+                apiPresetManager.deletePreset(id);
+                toastr.success('已删除预设', 'API预设');
+                this._refreshPresetList();
+            }
+        });
+
+        $('#stk_preset_module_bindings').on('change', '.stk-preset-binding', (e) => {
+            const moduleId = $(e.target).data('module');
+            const presetId = e.target.value || null;
+            apiPresetManager.setModulePreset(moduleId, presetId);
+            toastr.success('绑定已更新', 'API预设');
+        });
+    },
+
+    _showPresetEditor(presetId) {
+        const preset = presetId ? apiPresetManager.getPreset(presetId) : null;
+        const isEdit = !!preset;
+
+        const content = `
+            <div class="stk-preset-editor">
+                <div class="stk-row">
+                    <label>预设名称<input type="text" id="stk_pe_name" class="text_pole" value="${preset?.name || ''}" placeholder="输入预设名称" /></label>
+                </div>
+                <div class="stk-row">
+                    <label>API 地址<input type="text" id="stk_pe_url" class="text_pole" value="${preset?.baseUrl || ''}" placeholder="http://localhost:1234/v1" /></label>
+                </div>
+                <div class="stk-row">
+                    <label>API 密钥<input type="password" id="stk_pe_key" class="text_pole" value="${preset?.apiKey || ''}" /></label>
+                </div>
+                <div class="stk-row">
+                    <label>模型名称<input type="text" id="stk_pe_model" class="text_pole" value="${preset?.model || ''}" placeholder="gpt-3.5-turbo" /></label>
+                </div>
+                <div class="stk-row" style="gap:12px">
+                    <label>最大token<input type="number" id="stk_pe_max_tokens" class="text_pole" value="${preset?.parameters?.max_tokens || 2048}" min="256" max="8192" /></label>
+                    <label>温度<input type="number" id="stk_pe_temperature" class="text_pole" value="${preset?.parameters?.temperature || 0.7}" min="0" max="2" step="0.1" /></label>
+                </div>
+                <div class="stk-toggle">
+                    <input type="checkbox" id="stk_pe_stream" ${preset?.parameters?.stream ? 'checked' : ''} />
+                    <span>流式传输</span>
+                </div>
+                <div class="stk-row" style="gap:8px;margin-top:12px">
+                    <div class="stk-btn" id="stk_pe_test">测试连接</div>
+                    <div class="stk-btn" id="stk_pe_fetch">获取模型</div>
+                </div>
+                <div class="stk-row">
+                    <label>选择模型<select id="stk_pe_model_select" class="text_pole"><option value="">-- 获取模型列表 --</option></select></label>
+                </div>
+            </div>
+        `;
+
+        const $dialog = $(`
+            <div class="stk-modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:32000;display:flex;align-items:center;justify-content:center">
+                <div class="stk-modal" style="background:var(--stk-bg);border:1px solid var(--stk-border);border-radius:var(--stk-radius-lg);padding:20px;min-width:400px;max-width:90vw">
+                    <h3 style="margin:0 0 16px;color:var(--stk-text)">${isEdit ? '编辑预设' : '新建预设'}</h3>
+                    ${content}
+                    <div class="stk-row" style="justify-content:flex-end;gap:8px;margin-top:16px">
+                        <div class="stk-btn stk-modal-cancel">取消</div>
+                        <div class="stk-btn primary stk-modal-save">${isEdit ? '保存' : '创建'}</div>
+                    </div>
+                </div>
+            </div>
+        `);
+
+        $('body').append($dialog);
+
+        const closeDialog = () => $dialog.remove();
+
+        $dialog.find('.stk-modal-cancel').on('click', closeDialog);
+
+        $dialog.find('#stk_pe_test').on('click', async function() {
+            const $btn = $(this).text('测试中...').prop('disabled', true);
+            try {
+                const result = await apiPresetManager.testConnectionFromConfig({
+                    baseUrl: $('#stk_pe_url').val(),
+                    apiKey: $('#stk_pe_key').val(),
+                    model: $('#stk_pe_model').val()
+                });
+                if (result.success) toastr.success('连接成功', '测试结果');
+                else toastr.error(result.error || '失败', '测试结果');
+            } catch (e) {
+                toastr.error(e.message, '测试失败');
+            } finally {
+                $btn.text('测试连接').prop('disabled', false);
+            }
+        });
+
+        $dialog.find('#stk_pe_fetch').on('click', async function() {
+            const $btn = $(this).text('获取中...').prop('disabled', true);
+            try {
+                const models = await apiPresetManager.fetchModelsFromConfig({
+                    baseUrl: $('#stk_pe_url').val(),
+                    apiKey: $('#stk_pe_key').val()
+                });
+                if (models && models.length > 0) {
+                    const $select = $('#stk_pe_model_select').empty().append('<option value="">-- 选择模型 --</option>');
+                    models.forEach(m => $select.append(`<option value="${m}">${m}</option>`));
+                    toastr.success(`获取到 ${models.length} 个模型`, '成功');
+                } else {
+                    toastr.warning('未获取到模型', '结果');
+                }
+            } catch (e) {
+                toastr.error(e.message, '获取失败');
+            } finally {
+                $btn.text('获取模型').prop('disabled', false);
+            }
+        });
+
+        $dialog.find('#stk_pe_model_select').on('change', function() {
+            if (this.value) $('#stk_pe_model').val(this.value);
+        });
+
+        $dialog.find('.stk-modal-save').on('click', () => {
+            const name = $('#stk_pe_name').val().trim();
+            if (!name) {
+                toastr.error('请输入预设名称', '错误');
+                return;
+            }
+
+            const config = {
+                name,
+                baseUrl: $('#stk_pe_url').val().trim(),
+                apiKey: $('#stk_pe_key').val(),
+                model: $('#stk_pe_model').val().trim(),
+                parameters: {
+                    max_tokens: parseInt($('#stk_pe_max_tokens').val()) || 2048,
+                    temperature: parseFloat($('#stk_pe_temperature').val()) || 0.7,
+                    stream: $('#stk_pe_stream').is(':checked')
+                }
+            };
+
+            if (isEdit) {
+                apiPresetManager.updatePreset(presetId, config);
+                toastr.success('预设已更新', 'API预设');
+            } else {
+                apiPresetManager.createPreset(config);
+                toastr.success('预设已创建', 'API预设');
+            }
+
+            this._refreshPresetList();
+            closeDialog();
+        });
+
+        $dialog.on('click', '.stk-modal-overlay', (e) => {
+            if (e.target === $dialog[0]) closeDialog();
+        });
+    },
+
+    _bindAiInstructionEvents(modules) {
+        this._refreshAiPresetList();
+
+        $(document).on('change', '#stk_ai_preset_select', (e) => {
+            AIInstructionsManager.setActivePreset(e.target.value);
+            this._refreshAiSegments();
+        });
+
+        $(document).on('click', '#stk_ai_preset_new', () => {
+            const name = prompt('预设名称：', '新预设');
+            if (name) {
+                AIInstructionsManager.createPreset(name, AIInstructionsManager.getDefaultSegments());
+                this._refreshAiPresetList();
+                toastr.success('已创建预设', 'AI指令');
+            }
+        });
+
+        $(document).on('click', '#stk_ai_preset_dup', () => {
+            const activeId = AIInstructionsManager.activePresetId;
+            if (!activeId) {
+                toastr.warning('请先选择一个预设', 'AI指令');
+                return;
+            }
+            const copy = AIInstructionsManager.duplicatePreset(activeId);
+            if (copy) {
+                this._refreshAiPresetList();
+                toastr.success('已复制预设', 'AI指令');
+            }
+        });
+
+        $(document).on('click', '#stk_ai_preset_del', () => {
+            const activeId = AIInstructionsManager.activePresetId;
+            if (!activeId) return;
+            if (AIInstructionsManager.presets.length <= 1) {
+                toastr.warning('至少保留一个预设', 'AI指令');
+                return;
+            }
+            if (confirm('确定删除当前预设？')) {
+                AIInstructionsManager.deletePreset(activeId);
+                this._refreshAiPresetList();
+                toastr.success('已删除预设', 'AI指令');
+            }
+        });
+
+        $(document).on('click', '#stk_ai_preset_import', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const result = await AIInstructionsManager.uploadPresets(file);
+                if (result.success) {
+                    toastr.success(`导入成功：${result.imported} 个预设`, 'AI指令');
+                    if (result.skipped > 0) toastr.warning(`跳过 ${result.skipped} 个`, 'AI指令');
+                    this._refreshAiPresetList();
+                } else {
+                    toastr.error(result.error || '导入失败', 'AI指令');
+                }
+            };
+            input.click();
+        });
+
+        $(document).on('click', '#stk_ai_preset_export', () => {
+            const activeId = AIInstructionsManager.activePresetId;
+            if (!activeId) {
+                toastr.warning('请先选择预设', 'AI指令');
+                return;
+            }
+            const preset = AIInstructionsManager.presets.find(p => p.id === activeId);
+            AIInstructionsManager.downloadPresets([activeId], `ai-instruction-${preset?.name || 'export'}.json`);
+            toastr.success('已导出预设', 'AI指令');
+        });
+
+        $(document).on('click', '#stk_ai_preset_export_all', () => {
+            if (AIInstructionsManager.presets.length === 0) {
+                toastr.warning('没有可导出的预设', 'AI指令');
+                return;
+            }
+            AIInstructionsManager.downloadPresets();
+            toastr.success('已导出全部预设', 'AI指令');
+        });
+
+        $(document).on('click', '#stk_ai_add_segment', () => {
+            const activeId = AIInstructionsManager.activePresetId;
+            if (!activeId) {
+                toastr.warning('请先选择预设', 'AI指令');
+                return;
+            }
+            AIInstructionsManager.addSegment(activeId, { role: 'user', name: '新段落', content: '' });
+            this._refreshAiSegments();
+        });
+
+        $(document).on('click', '.stk-ai-seg-del', (e) => {
+            const activeId = AIInstructionsManager.activePresetId;
+            const segId = $(e.currentTarget).data('id');
+            if (AIInstructionsManager.deleteSegment(activeId, segId)) {
+                this._refreshAiSegments();
+                toastr.success('已删除段落', 'AI指令');
+            }
+        });
+
+        $(document).on('input', '.stk-ai-seg-name', (e) => {
+            const activeId = AIInstructionsManager.activePresetId;
+            const $item = $(e.currentTarget).closest('.stk-ai-segment-item');
+            const segId = $item.data('id');
+            AIInstructionsManager.updateSegment(activeId, segId, { name: e.target.value });
+            this._updateAiPreview();
+        });
+
+        $(document).on('change', '.stk-ai-seg-role', (e) => {
+            const activeId = AIInstructionsManager.activePresetId;
+            const $item = $(e.currentTarget).closest('.stk-ai-segment-item');
+            const segId = $item.data('id');
+            AIInstructionsManager.updateSegment(activeId, segId, { role: e.target.value });
+            this._updateAiPreview();
+        });
+
+        $(document).on('input', '.stk-ai-seg-content', (e) => {
+            const activeId = AIInstructionsManager.activePresetId;
+            const $item = $(e.currentTarget).closest('.stk-ai-segment-item');
+            const segId = $item.data('id');
+            AIInstructionsManager.updateSegment(activeId, segId, { content: e.target.value });
+            this._updateAiPreview();
+        });
+    },
+
+    _refreshAiPresetList() {
+        const presets = AIInstructionsManager.presets;
+        const activeId = AIInstructionsManager.activePresetId;
+        const $select = $('#stk_ai_preset_select');
+        if ($select.length) {
+            $select.empty().append(presets.map(p => 
+                `<option value="${p.id}"${p.id === activeId ? ' selected' : ''}>${_.escape(p.name)}</option>`
+            ).join(''));
+        }
+        this._refreshAiSegments();
+    },
+
+    _refreshAiSegments() {
+        const $container = $('#stk_ai_segments_container');
+        if (!$container.length) return;
+        
+        const preset = AIInstructionsManager.activePreset;
+        if (!preset || !preset.segments || preset.segments.length === 0) {
+            $container.html('<div style="text-align:center;color:var(--stk-text-3);padding:20px">无段落，点击下方添加</div><div class="stk-btn" id="stk_ai_add_segment" style="width:100%;margin-top:8px">+ 添加段落</div>');
+            this._updateAiPreview();
+            return;
+        }
+
+        const sorted = [...preset.segments].sort((a, b) => a.order - b.order);
+        const html = sorted.map((seg, idx) => `
+            <div class="stk-ai-segment-item" data-id="${seg.id}" style="background:rgba(0,0,0,0.15);border-radius:6px;padding:10px;margin:6px 0">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <span style="color:var(--stk-text-3);font-size:11px">#${idx + 1}</span>
+                        <input type="text" class="text_pole stk-ai-seg-name" value="${_.escape(seg.name)}" style="width:120px;font-size:12px" />
+                        <select class="text_pole stk-ai-seg-role" style="width:80px;font-size:12px">
+                            <option value="system" ${seg.role === 'system' ? 'selected' : ''}>system</option>
+                            <option value="user" ${seg.role === 'user' ? 'selected' : ''}>user</option>
+                            <option value="assistant" ${seg.role === 'assistant' ? 'selected' : ''}>assistant</option>
+                        </select>
+                    </div>
+                    <div style="display:flex;gap:4px">
+                        ${seg.deletable ? `<div class="stk-btn stk-ai-seg-del" data-id="${seg.id}" style="padding:2px 6px;font-size:10px;color:#ff6b6b">删除</div>` : ''}
+                    </div>
+                </div>
+                <textarea class="text_pole stk-ai-seg-content" rows="3" style="font-size:12px;resize:vertical">${_.escape(seg.content)}</textarea>
+            </div>
+        `).join('') + `<div class="stk-btn" id="stk_ai_add_segment" style="width:100%;margin-top:8px">+ 添加段落</div>`;
+        
+        $container.html(html);
+        this._updateAiPreview();
+    },
+
+    _updateAiPreview() {
+        const $preview = $('#stk_ai_preview');
+        if ($preview.length) {
+            $preview.val(AIInstructionsManager.buildPrompt());
+        }
+    },
+
+    _bindWorldbookConfigEvents(modules) {
+        const zeroTkMode = WorldbookConfigManager.zeroTkOccupyMode;
+        $('#stk_wb_0tk_mode').prop('checked', zeroTkMode);
+
+        $(document).on('change', '#stk_wb_0tk_mode', async (e) => {
+            const enabled = $(e.target).is(':checked');
+            await WorldbookConfigManager.setZeroTkOccupyMode(enabled);
+            toastr.success(`0TK占用模式已${enabled ? '启用' : '禁用'}`, '世界书配置');
+            this._refreshWorldbookEntries();
+        });
+
+        $(document).on('click', '#stk_wb_sync_now', async () => {
+            const result = await WorldbookConfigManager.syncToWorldbook();
+            if (result) {
+                toastr.success('同步完成', '世界书配置');
+                this._refreshWorldbookEntries();
+            } else {
+                toastr.error('同步失败', '世界书配置');
+            }
+        });
+
+        $(document).on('click', '#stk_wb_refresh_list', () => {
+            this._refreshWorldbookEntries();
+        });
+
+        $(document).on('click', '#stk_wb_export_config', () => {
+            const config = WorldbookConfigManager.exportConfig();
+            const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'stk-worldbook-config.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            toastr.success('配置已导出', '世界书配置');
+        });
+
+        $(document).on('click', '#stk_wb_import_config', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                try {
+                    const text = await file.text();
+                    const data = JSON.parse(text);
+                    const result = WorldbookConfigManager.importConfig(data);
+                    if (result.success) {
+                        toastr.success('配置已导入', '世界书配置');
+                        this._refreshWorldbookConfigUI();
+                    } else {
+                        toastr.error(result.error || '导入失败', '世界书配置');
+                    }
+                } catch (err) {
+                    toastr.error('文件解析失败', '世界书配置');
+                }
+            };
+            input.click();
+        });
+
+        $(document).on('click', '#stk_wb_reset_config', () => {
+            if (confirm('确定要重置所有世界书配置吗？')) {
+                WorldbookConfigManager.resetConfig();
+                toastr.success('配置已重置', '世界书配置');
+                this._refreshWorldbookConfigUI();
+            }
+        });
+
+        $(document).on('click', '.stk-wb-entry-toggle', async (e) => {
+            const uid = $(e.currentTarget).data('uid');
+            const enabled = $(e.currentTarget).data('enabled') === true;
+            const result = await WorldbookConfigManager.setEntryEnabled(uid, !enabled);
+            if (result) {
+                $(e.currentTarget).data('enabled', !enabled);
+                $(e.currentTarget).text(!enabled ? '禁用' : '启用');
+                toastr.success(`条目已${!enabled ? '启用' : '禁用'}`, '世界书配置');
+            }
+        });
+    },
+
+    async _refreshWorldbookEntries() {
+        const $list = $('#stk_wb_entries_list');
+        if (!$list.length) return;
+
+        $list.html('<div style="text-align:center;padding:20px">加载中...</div>');
+
+        const entries = await WorldbookConfigManager.listWorldbookEntries();
+        const stkEntries = entries.filter(e =>
+            (e.key && e.key.startsWith('stk_')) ||
+            (e.comment && e.comment.includes('STK')) ||
+            (e.comment && e.comment.includes('SmartToolkit'))
+        );
+
+        if (stkEntries.length === 0) {
+            $list.html('<div style="text-align:center;color:var(--stk-text-3);padding:20px">没有找到STK相关条目</div>');
+            return;
+        }
+
+        const html = stkEntries.map(e => `
+            <div class="stk-wb-entry-item" style="display:flex;align-items:center;justify-content:space-between;padding:8px;background:rgba(0,0,0,0.15);border-radius:4px;margin:4px 0">
+                <div>
+                    <div style="font-size:12px;font-weight:500">${_.escape(e.key || e.comment || '未命名')}</div>
+                    <div style="font-size:10px;color:var(--stk-text-3)">${e.enabled ? '✓ 启用' : '○ 禁用'}</div>
+                </div>
+                <div class="stk-btn stk-wb-entry-toggle" data-uid="${e.uid}" data-enabled="${e.enabled}" style="padding:2px 8px;font-size:11px">
+                    ${e.enabled ? '禁用' : '启用'}
+                </div>
+            </div>
+        `).join('');
+
+        $list.html(html);
+    },
+
+    _refreshWorldbookConfigUI() {
+        const zeroTkMode = WorldbookConfigManager.zeroTkOccupyMode;
+        $('#stk_wb_0tk_mode').prop('checked', zeroTkMode);
+        this._refreshWorldbookEntries();
     },
 };
