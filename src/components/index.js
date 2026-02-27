@@ -5,3 +5,7 @@ export { WindowManager, windowManager } from './WindowManager.js';
 export { DraggableWindow } from './DraggableWindow.js';
 export { SidebarWindow } from './SidebarWindow.js';
 export { OptionsBarWindow, optionsBarWindow } from './OptionsBarWindow.js';
+export { TabbedPanel } from './TabbedPanel.js';
+export { DatabaseVisualizer } from './DatabaseVisualizer.js';
+export { ResponsiveGrid } from './ResponsiveGrid.js';
+export { WorldbookSelector } from './WorldbookSelector.js';

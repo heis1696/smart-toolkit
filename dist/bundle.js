@@ -254,6 +254,9 @@
       __publicField(this, "_cache", /* @__PURE__ */ new Map());
       __publicField(this, "_initialized", false);
       __publicField(this, "_initPromise", null);
+      __publicField(this, "_currentProfileCode", "default");
+      __publicField(this, "_profileSettingsKey", "stk_profiles");
+      __publicField(this, "_activeProfileKey", "stk_active_profile");
     }
     static getInstance() {
       if (!_StorageManager._instance) {
@@ -403,6 +406,128 @@
     }
     saveSettings() {
       this._persistTavernSettings();
+    }
+    getCurrentProfileCode() {
+      return this._currentProfileCode;
+    }
+    setCurrentProfileCode(code) {
+      this._currentProfileCode = code || "default";
+      this.set(this._activeProfileKey, this._currentProfileCode);
+    }
+    loadActiveProfileCode() {
+      const saved = this.get(this._activeProfileKey);
+      if (saved) {
+        try {
+          this._currentProfileCode = typeof saved === "string" ? saved : "default";
+        } catch {
+          this._currentProfileCode = "default";
+        }
+      }
+      return this._currentProfileCode;
+    }
+    getProfileKey(profileCode, key) {
+      const code = profileCode || this._currentProfileCode || "default";
+      return `profile_${code}_${key}`;
+    }
+    getProfileSettings(profileCode, defaults = {}) {
+      const code = profileCode || this._currentProfileCode || "default";
+      const profileKey = this.getProfileKey(code, "settings");
+      const settings = this.getObject(profileKey) || {};
+      const result = { ...defaults };
+      for (const [key, defaultValue] of Object.entries(defaults)) {
+        if (settings[key] !== void 0) {
+          result[key] = settings[key];
+        } else {
+          result[key] = JSON.parse(JSON.stringify(defaultValue));
+        }
+      }
+      return result;
+    }
+    setProfileSettings(profileCode, settings) {
+      const code = profileCode || this._currentProfileCode || "default";
+      const profileKey = this.getProfileKey(code, "settings");
+      this.setObject(profileKey, settings);
+    }
+    getProfileData(profileCode, dataKey) {
+      const code = profileCode || this._currentProfileCode || "default";
+      const fullKey = this.getProfileKey(code, dataKey);
+      return this.getObject(fullKey);
+    }
+    setProfileData(profileCode, dataKey, data) {
+      const code = profileCode || this._currentProfileCode || "default";
+      const fullKey = this.getProfileKey(code, dataKey);
+      this.setObject(fullKey, data);
+    }
+    deleteProfileData(profileCode, dataKey) {
+      const code = profileCode || this._currentProfileCode || "default";
+      const fullKey = this.getProfileKey(code, dataKey);
+      this.delete(fullKey);
+    }
+    listProfiles() {
+      const profiles = this.getObject(this._profileSettingsKey) || { default: { name: "\u9ED8\u8BA4", created: Date.now() } };
+      return profiles;
+    }
+    createProfile(code, name) {
+      const profiles = this.listProfiles();
+      if (profiles[code]) {
+        return false;
+      }
+      profiles[code] = {
+        name: name || code,
+        created: Date.now()
+      };
+      this.setObject(this._profileSettingsKey, profiles);
+      return true;
+    }
+    renameProfile(code, newName) {
+      const profiles = this.listProfiles();
+      if (!profiles[code]) {
+        return false;
+      }
+      profiles[code].name = newName || code;
+      profiles[code].modified = Date.now();
+      this.setObject(this._profileSettingsKey, profiles);
+      return true;
+    }
+    deleteProfile(code) {
+      if (code === "default") {
+        return false;
+      }
+      const profiles = this.listProfiles();
+      if (!profiles[code]) {
+        return false;
+      }
+      delete profiles[code];
+      this.setObject(this._profileSettingsKey, profiles);
+      const allKeys = this._cache.keys();
+      const prefix = `profile_${code}_`;
+      for (const key of allKeys) {
+        if (key.startsWith(prefix)) {
+          this.delete(key);
+        }
+      }
+      if (this._currentProfileCode === code) {
+        this._currentProfileCode = "default";
+        this.set(this._activeProfileKey, "default");
+      }
+      return true;
+    }
+    switchProfile(newCode) {
+      const profiles = this.listProfiles();
+      if (!profiles[newCode]) {
+        return false;
+      }
+      this._currentProfileCode = newCode;
+      this.set(this._activeProfileKey, newCode);
+      return true;
+    }
+    getProfileInfo(profileCode) {
+      const code = profileCode || this._currentProfileCode || "default";
+      const profiles = this.listProfiles();
+      return profiles[code] || null;
+    }
+    getIsolationKey() {
+      return this._currentProfileCode || "default";
     }
   };
   __publicField(_StorageManager, "_instance", null);
